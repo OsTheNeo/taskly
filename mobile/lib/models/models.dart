@@ -1,6 +1,7 @@
 /// Barrel file for all models
 library;
 
+export 'challenge.dart';
 export 'goal.dart';
 export 'task.dart';
 export 'task_category.dart';

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:radix_icons/radix_icons.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/ui/ui.dart';
+import 'challenges_page.dart';
 import 'profile_page.dart';
 import 'groups_page.dart';
 import 'home_page.dart';
-import 'stats_page.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -25,7 +25,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   final List<Widget> _pages = const [
     HomePage(),
     GroupsPage(),
-    StatsPage(),
+    ChallengesPage(),
     ProfilePage(),
   ];
 
@@ -85,8 +85,8 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final l10n = S.of(context)!;
 
-    final labels = [l10n.today, l10n.tasks, 'Stats', l10n.profile];
-    final icons = [RadixIcons.Home, RadixIcons.Checkbox, RadixIcons.Activity_Log, RadixIcons.Person];
+    final labels = [l10n.today, l10n.tasks, 'Retos', l10n.profile];
+    final icons = [RadixIcons.Home, RadixIcons.Checkbox, RadixIcons.Rocket, RadixIcons.Person];
 
     return Scaffold(
       body: Stack(

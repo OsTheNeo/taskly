@@ -601,4 +601,304 @@ class DataService {
       return [];
     }
   }
+
+  // ============================================================================
+  // CHALLENGES
+  // ============================================================================
+
+  /// Crea un nuevo challenge
+  Future<Map<String, dynamic>?> createChallenge({
+    required String visitorId,
+    required String title,
+    String? description,
+    String emoji = '🏆',
+    required String challengeType,
+    required int targetValue,
+    String? categoryFilter,
+    required DateTime startDate,
+    required DateTime endDate,
+    String visibility = 'household',
+    String? householdId,
+    int maxParticipants = 50,
+  }) async {
+    try {
+      final profile = await getProfile(visitorId);
+      if (profile == null) return null;
+
+      final challengeId = _uuid.v4();
+
+      final data = {
+        'id': challengeId,
+        'title': title,
+        'description': description,
+        'emoji': emoji,
+        'challenge_type': challengeType,
+        'target_value': targetValue,
+        'category_filter': categoryFilter,
+        'start_date': startDate.toIso8601String().split('T')[0],
+        'end_date': endDate.toIso8601String().split('T')[0],
+        'visibility': visibility,
+        'household_id': householdId,
+        'max_participants': maxParticipants,
+        'created_by': profile['id'],
+      };
+
+      final response = await _client
+          .from('taskly_challenges')
+          .insert(data)
+          .select()
+          .single();
+
+      // Auto-unirse al challenge creado
+      await joinChallenge(visitorId: visitorId, challengeId: challengeId);
+
+      debugPrint('[DataService] Challenge created: $challengeId');
+      return response;
+    } catch (e) {
+      debugPrint('[DataService] Error creating challenge: $e');
+      return null;
+    }
+  }
+
+  /// Unirse a un challenge
+  Future<Map<String, dynamic>?> joinChallenge({
+    required String visitorId,
+    required String challengeId,
+  }) async {
+    try {
+      final profile = await getProfile(visitorId);
+      if (profile == null) return null;
+
+      final data = {
+        'id': _uuid.v4(),
+        'challenge_id': challengeId,
+        'user_id': profile['id'],
+        'current_score': 0,
+        'best_streak': 0,
+      };
+
+      final response = await _client
+          .from('taskly_challenge_participants')
+          .upsert(data, onConflict: 'challenge_id,user_id')
+          .select()
+          .single();
+
+      debugPrint('[DataService] Joined challenge: $challengeId');
+      return response;
+    } catch (e) {
+      debugPrint('[DataService] Error joining challenge: $e');
+      return null;
+    }
+  }
+
+  /// Unirse a un challenge por código de invitación
+  Future<Map<String, dynamic>?> joinChallengeByCode({
+    required String visitorId,
+    required String inviteCode,
+  }) async {
+    try {
+      // Buscar challenge por código
+      final challenge = await _client
+          .from('taskly_challenges')
+          .select()
+          .eq('invite_code', inviteCode)
+          .maybeSingle();
+
+      if (challenge == null) {
+        debugPrint('[DataService] Challenge not found with code: $inviteCode');
+        return null;
+      }
+
+      return joinChallenge(visitorId: visitorId, challengeId: challenge['id']);
+    } catch (e) {
+      debugPrint('[DataService] Error joining challenge by code: $e');
+      return null;
+    }
+  }
+
+  /// Obtiene los challenges disponibles para el usuario
+  Future<List<Map<String, dynamic>>> getChallenges({
+    required String visitorId,
+    bool activeOnly = false,
+  }) async {
+    try {
+      final profile = await getProfile(visitorId);
+      if (profile == null) return [];
+
+      // Obtener households del usuario para filtrar challenges de household
+      final householdIds = <String>[];
+      final memberships = await _client
+          .from(SupabaseConfig.householdMembersTable)
+          .select('household_id')
+          .eq('user_id', profile['id']);
+
+      for (final m in memberships) {
+        householdIds.add(m['household_id'] as String);
+      }
+
+      var query = _client.from('taskly_challenges').select('''
+        *,
+        participants:taskly_challenge_participants(count),
+        my_participation:taskly_challenge_participants!inner(id, current_score, best_streak, joined_at)
+      ''').eq('my_participation.user_id', profile['id']);
+
+      if (activeOnly) {
+        query = query.eq('status', 'active');
+      }
+
+      final response = await query.order('start_date', ascending: false);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('[DataService] Error getting challenges: $e');
+      return [];
+    }
+  }
+
+  /// Obtiene challenges públicos o disponibles
+  Future<List<Map<String, dynamic>>> getAvailableChallenges({
+    required String visitorId,
+  }) async {
+    try {
+      final profile = await getProfile(visitorId);
+      if (profile == null) return [];
+
+      // Obtener households del usuario
+      final householdIds = <String>[];
+      final memberships = await _client
+          .from(SupabaseConfig.householdMembersTable)
+          .select('household_id')
+          .eq('user_id', profile['id']);
+
+      for (final m in memberships) {
+        householdIds.add(m['household_id'] as String);
+      }
+
+      // Challenges públicos o de mis households, que aún no he unido
+      final response = await _client
+          .from('taskly_challenges')
+          .select('''
+            *,
+            participants:taskly_challenge_participants(count),
+            creator:taskly_profiles!created_by(display_name, avatar_url)
+          ''')
+          .or('visibility.eq.public,household_id.in.(${householdIds.join(",")})')
+          .neq('status', 'cancelled')
+          .order('start_date', ascending: true);
+
+      // Filtrar los que ya tengo
+      final myChallenges = await getChallenges(visitorId: visitorId);
+      final myIds = myChallenges.map((c) => c['id']).toSet();
+
+      return List<Map<String, dynamic>>.from(response)
+          .where((c) => !myIds.contains(c['id']))
+          .toList();
+    } catch (e) {
+      debugPrint('[DataService] Error getting available challenges: $e');
+      return [];
+    }
+  }
+
+  /// Obtiene el leaderboard de un challenge
+  Future<List<Map<String, dynamic>>> getChallengeLeaderboard(
+    String challengeId,
+  ) async {
+    try {
+      final response = await _client
+          .from('taskly_leaderboard')
+          .select()
+          .eq('challenge_id', challengeId)
+          .order('rank', ascending: true)
+          .limit(50);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('[DataService] Error getting leaderboard: $e');
+      return [];
+    }
+  }
+
+  /// Actualiza el puntaje de un participante
+  Future<void> updateChallengeScore({
+    required String visitorId,
+    required String challengeId,
+    required int scoreIncrement,
+  }) async {
+    try {
+      final profile = await getProfile(visitorId);
+      if (profile == null) return;
+
+      // Obtener participación actual
+      final participation = await _client
+          .from('taskly_challenge_participants')
+          .select()
+          .eq('challenge_id', challengeId)
+          .eq('user_id', profile['id'])
+          .maybeSingle();
+
+      if (participation == null) return;
+
+      final newScore = (participation['current_score'] as int? ?? 0) + scoreIncrement;
+
+      await _client
+          .from('taskly_challenge_participants')
+          .update({
+            'current_score': newScore,
+            'last_activity_date': DateTime.now().toIso8601String().split('T')[0],
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', participation['id']);
+
+      debugPrint('[DataService] Challenge score updated: +$scoreIncrement');
+    } catch (e) {
+      debugPrint('[DataService] Error updating challenge score: $e');
+    }
+  }
+
+  /// Obtiene estadísticas del usuario en challenges
+  Future<Map<String, dynamic>> getChallengeStats(String visitorId) async {
+    try {
+      final profile = await getProfile(visitorId);
+      if (profile == null) return {};
+
+      final stats = await _client
+          .from('taskly_user_challenge_stats')
+          .select()
+          .eq('user_id', profile['id'])
+          .maybeSingle();
+
+      return stats ?? {
+        'active_challenges': 0,
+        'challenges_won': 0,
+        'total_points': 0,
+        'all_time_best_streak': 0,
+        'average_rank': 0,
+      };
+    } catch (e) {
+      debugPrint('[DataService] Error getting challenge stats: $e');
+      return {};
+    }
+  }
+
+  /// Abandona un challenge
+  Future<bool> leaveChallenge({
+    required String visitorId,
+    required String challengeId,
+  }) async {
+    try {
+      final profile = await getProfile(visitorId);
+      if (profile == null) return false;
+
+      await _client
+          .from('taskly_challenge_participants')
+          .update({'is_active': false})
+          .eq('challenge_id', challengeId)
+          .eq('user_id', profile['id']);
+
+      debugPrint('[DataService] Left challenge: $challengeId');
+      return true;
+    } catch (e) {
+      debugPrint('[DataService] Error leaving challenge: $e');
+      return false;
+    }
+  }
 }

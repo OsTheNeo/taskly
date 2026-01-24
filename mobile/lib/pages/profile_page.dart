@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../state/settings_state.dart' as settings;
 import '../l10n/app_localizations.dart';
 import '../widgets/ui/ui.dart';
+import 'stats_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -326,6 +327,27 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
 
           const SizedBox(height: 32),
+
+          // Stats card
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _buildSettingsItem(
+                  RadixIcons.Activity_Log,
+                  'Estadisticas',
+                  null,
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const StatsPage()),
+                  ),
+                  isDark,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
 
           // Settings
           AppCard(
