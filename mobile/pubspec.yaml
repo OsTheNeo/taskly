@@ -38,8 +38,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # State Management
-  flutter_bloc: ^8.1.6
-  equatable: ^2.0.5
+  signals: ^6.3.0
 
   # Backend & Database
   supabase_flutter: ^2.8.0
@@ -48,6 +47,7 @@ dependencies:
   # Firebase & Auth
   firebase_core: ^3.8.1
   firebase_auth: ^5.4.1
+  firebase_messaging: ^15.1.6
   google_sign_in: ^6.2.2
 
   # Navigation

@@ -109,6 +109,24 @@ abstract class S {
   /// **'Hoy'**
   String get today;
 
+  /// No description provided for @home.
+  ///
+  /// In es, this message translates to:
+  /// **'Inicio'**
+  String get home;
+
+  /// No description provided for @dailyGoals.
+  ///
+  /// In es, this message translates to:
+  /// **'Metas diarias'**
+  String get dailyGoals;
+
+  /// No description provided for @todayTasks.
+  ///
+  /// In es, this message translates to:
+  /// **'Tareas de hoy'**
+  String get todayTasks;
+
   /// No description provided for @tasks.
   ///
   /// In es, this message translates to:

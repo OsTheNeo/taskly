@@ -15,6 +15,15 @@ class SEn extends S {
   String get today => 'Today';
 
   @override
+  String get home => 'Home';
+
+  @override
+  String get dailyGoals => 'Daily goals';
+
+  @override
+  String get todayTasks => 'Today\'s tasks';
+
+  @override
   String get tasks => 'Tasks';
 
   @override

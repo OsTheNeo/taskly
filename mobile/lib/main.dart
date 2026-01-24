@@ -1,27 +1,29 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
-import 'core/di/injection.dart';
-import 'core/services/notification_service.dart';
+import 'services/injection.dart';
+import 'services/notification_service.dart';
+import 'services/supabase_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
+  // Initialize Firebase (para Auth)
   await Firebase.initializeApp();
+
+  // Initialize Supabase (para Base de Datos)
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    anonKey: SupabaseConfig.anonKey,
+  );
 
   // Initialize notification service
   await NotificationService().initialize();
 
-  // Initialize dependency injection
+  // Initialize dependency injection and settings
   await configureDependencies();
-
-  // TODO: Initialize Supabase when ready
-  // await Supabase.initialize(
-  //   url: 'YOUR_SUPABASE_URL',
-  //   anonKey: 'YOUR_SUPABASE_ANON_KEY',
-  // );
 
   runApp(const TasklyApp());
 }

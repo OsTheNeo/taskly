@@ -15,6 +15,15 @@ class SEs extends S {
   String get today => 'Hoy';
 
   @override
+  String get home => 'Inicio';
+
+  @override
+  String get dailyGoals => 'Metas diarias';
+
+  @override
+  String get todayTasks => 'Tareas de hoy';
+
+  @override
   String get tasks => 'Tareas';
 
   @override
