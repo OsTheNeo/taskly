@@ -30,11 +30,11 @@ import {
   Briefcase,
   Sun,
   Loader2,
-  Search,
-  X,
   Trash2,
   MoreVertical,
-  Edit,
+  Sparkles,
+  CheckCircle2,
+  Calendar,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -98,11 +98,6 @@ export default function AppDashboard() {
   const [dateInfo, setDateInfo] = useState(getFormattedDate());
   const [addDialogOpen, setAddDialogOpen] = useState(false);
 
-  // Search and filter state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [showCompleted, setShowCompleted] = useState<boolean | null>(null);
-
   // Task form state
   const [newTitle, setNewTitle] = useState("");
   const [newIsGoal, setNewIsGoal] = useState(false);
@@ -119,36 +114,16 @@ export default function AppDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Filtered tasks
-  const filteredTasks = useMemo(() => {
-    let result = tasks;
+  // Separate pending and completed tasks
+  const pendingTasks = useMemo(() =>
+    tasks.filter((t) => t.completion?.status !== "completed"),
+    [tasks]
+  );
 
-    if (searchQuery) {
-      result = result.filter((t) =>
-        t.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (selectedCategory) {
-      result = result.filter((t) => t.color === selectedCategory);
-    }
-
-    if (showCompleted !== null) {
-      result = result.filter((t) => {
-        const isCompleted = t.completion?.status === "completed";
-        return showCompleted ? isCompleted : !isCompleted;
-      });
-    }
-
-    return result;
-  }, [tasks, searchQuery, selectedCategory, showCompleted]);
-
-  // Get unique categories from tasks
-  const usedCategories = useMemo(() => {
-    const cats = new Set<string>();
-    tasks.forEach((t) => cats.add(t.color || "personal"));
-    return Array.from(cats);
-  }, [tasks]);
+  const completedTasks = useMemo(() =>
+    tasks.filter((t) => t.completion?.status === "completed"),
+    [tasks]
+  );
 
   const handleAddTask = async () => {
     if (!newTitle.trim()) return;
@@ -176,12 +151,6 @@ export default function AppDashboard() {
     if (deleteTask) {
       await deleteTask(taskId);
     }
-  };
-
-  const clearFilters = () => {
-    setSearchQuery("");
-    setSelectedCategory(null);
-    setShowCompleted(null);
   };
 
   // Loading state
@@ -213,7 +182,6 @@ export default function AppDashboard() {
   }
 
   const overallProgress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-  const hasActiveFilters = searchQuery || selectedCategory || showCompleted !== null;
 
   return (
     <div className="container mx-auto max-w-lg px-4 py-6">
@@ -284,158 +252,86 @@ export default function AppDashboard() {
         </CardContent>
       </Card>
 
-      {/* Search Bar */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar tareas..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 pr-9"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2"
-          >
-            <X className="size-4 text-muted-foreground hover:text-foreground" />
-          </button>
-        )}
-      </div>
-
-      {/* Filter Chips */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-        <FilterChip
-          label="Todas"
-          active={!hasActiveFilters}
-          onClick={clearFilters}
-        />
-        <FilterChip
-          label="Pendientes"
-          active={showCompleted === false}
-          onClick={() => setShowCompleted(showCompleted === false ? null : false)}
-        />
-        <FilterChip
-          label="Completadas"
-          active={showCompleted === true}
-          onClick={() => setShowCompleted(showCompleted === true ? null : true)}
-        />
-        {usedCategories.length > 1 && (
-          <>
-            <div className="w-px bg-border self-stretch" />
-            {usedCategories.map((cat) => {
-              const config = categoryConfig[cat as keyof typeof categoryConfig] || categoryConfig.personal;
-              return (
-                <FilterChip
-                  key={cat}
-                  label={config.name}
-                  active={selectedCategory === cat}
-                  color={config.color}
-                  onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-                />
-              );
-            })}
-          </>
-        )}
-      </div>
-
       {/* Task List */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">
-            Tareas de hoy
-          </h2>
-          <Badge variant="secondary">{filteredTasks.length}</Badge>
+      {tasksLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="size-8 animate-spin text-primary" />
         </div>
+      ) : tasks.length === 0 ? (
+        <EmptyState onAddTask={() => setAddDialogOpen(true)} />
+      ) : (
+        <div className="space-y-6">
+          {/* Pending Tasks */}
+          {pendingTasks.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Pendientes
+                </h2>
+                <Badge variant="secondary">{pendingTasks.length}</Badge>
+              </div>
+              {pendingTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onToggle={() => toggleComplete(task.id)}
+                  onDelete={() => handleDeleteTask(task.id)}
+                />
+              ))}
+            </div>
+          )}
 
-        {tasksLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : filteredTasks.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              {hasActiveFilters
-                ? "No hay resultados. Prueba con otros filtros."
-                : "No tienes tareas para hoy. Agrega una nueva tarea."}
-            </CardContent>
-          </Card>
-        ) : (
-          filteredTasks.map((task) => {
-            const isCompleted = task.completion?.status === "completed";
-            const categoryKey = (task.color || "personal") as keyof typeof categoryConfig;
-            const category = categoryConfig[categoryKey] || categoryConfig.personal;
-            const CategoryIcon = category.icon;
-            const goalProgress =
-              task.has_progress && task.completion?.progress_value && task.progress_target
-                ? Math.round((task.completion.progress_value / task.progress_target) * 100)
-                : 0;
+          {/* Completed Tasks */}
+          {completedTasks.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-medium text-muted-foreground">
+                  Completadas
+                </h2>
+                <Badge variant="outline" className="text-muted-foreground">
+                  {completedTasks.length}
+                </Badge>
+              </div>
+              {completedTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onToggle={() => toggleComplete(task.id)}
+                  onDelete={() => handleDeleteTask(task.id)}
+                />
+              ))}
+            </div>
+          )}
 
-            return (
-              <Card
-                key={task.id}
-                className={`border-l-4 ${category.borderColor} transition-all hover:shadow-md ${
-                  isCompleted ? "opacity-60" : ""
-                }`}
-              >
-                <CardContent className="py-4 px-4">
-                  <div className="flex items-center gap-4">
-                    <Checkbox
-                      checked={isCompleted}
-                      onCheckedChange={() => toggleComplete(task.id)}
-                      className="size-5"
-                    />
+          {/* All completed message */}
+          {pendingTasks.length === 0 && completedTasks.length > 0 && (
+            <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20">
+              <CardContent className="py-6 text-center">
+                <div className="size-12 mx-auto mb-3 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <CheckCircle2 className="size-6 text-green-600" />
+                </div>
+                <h3 className="font-semibold text-green-700 dark:text-green-400">
+                  Excelente trabajo!
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Completaste todas tus tareas de hoy
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`font-medium ${
-                          isCompleted
-                            ? "line-through text-muted-foreground"
-                            : "text-foreground"
-                        }`}
-                      >
-                        {task.title}
-                      </p>
-
-                      {task.has_progress && task.progress_target && (
-                        <div className="mt-2 space-y-1">
-                          <Progress value={goalProgress} className="h-2" />
-                          <p className="text-xs text-muted-foreground">
-                            {task.completion?.progress_value || 0}/{task.progress_target}{" "}
-                            {task.progress_unit || "min"}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      className={`size-10 rounded-full flex items-center justify-center ${category.color}/10`}
-                    >
-                      <CategoryIcon
-                        className={`size-5 ${category.color.replace("bg-", "text-")}`}
-                      />
-                    </div>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-8">
-                          <MoreVertical className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleDeleteTask(task.id)}>
-                          <Trash2 className="size-4 mr-2 text-red-500" />
-                          <span className="text-red-500">Eliminar</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
+      {/* Floating Add Button (when tasks exist) */}
+      {tasks.length > 0 && (
+        <Button
+          size="lg"
+          className="fixed bottom-24 right-4 rounded-full size-14 shadow-lg"
+          onClick={() => setAddDialogOpen(true)}
+        >
+          <Plus className="size-6" />
+        </Button>
+      )}
 
       {/* Add Task Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
@@ -517,29 +413,150 @@ export default function AppDashboard() {
   );
 }
 
-function FilterChip({
-  label,
-  active,
-  color,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  color?: string;
-  onClick: () => void;
-}) {
+// Empty state component
+function EmptyState({ onAddTask }: { onAddTask: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-        active
-          ? color
-            ? `${color}/20 ${color.replace("bg-", "text-")}`
-            : "bg-primary/10 text-primary"
-          : "bg-muted text-muted-foreground hover:bg-muted/80"
+    <Card className="border-dashed">
+      <CardContent className="py-12">
+        <div className="text-center">
+          {/* Illustration */}
+          <div className="relative mx-auto mb-6 size-32">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full" />
+            <div className="absolute inset-4 bg-gradient-to-br from-primary/30 to-primary/10 rounded-full flex items-center justify-center">
+              <Sparkles className="size-12 text-primary" />
+            </div>
+            {/* Decorative elements */}
+            <div className="absolute -top-1 -right-1 size-6 bg-orange-400 rounded-full flex items-center justify-center">
+              <Calendar className="size-3 text-white" />
+            </div>
+            <div className="absolute -bottom-1 -left-1 size-5 bg-green-400 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="size-3 text-white" />
+            </div>
+          </div>
+
+          {/* Message */}
+          <h3 className="text-xl font-semibold mb-2">
+            Empieza tu dia productivo
+          </h3>
+          <p className="text-muted-foreground mb-6 max-w-xs mx-auto">
+            Agrega tu primera tarea y comienza a construir habitos positivos
+          </p>
+
+          {/* CTA Button */}
+          <Button size="lg" onClick={onAddTask} className="gap-2">
+            <Plus className="size-5" />
+            Agregar primera tarea
+          </Button>
+
+          {/* Tips */}
+          <div className="mt-8 pt-6 border-t">
+            <p className="text-xs text-muted-foreground mb-3">Ideas para comenzar:</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {["Meditar 10 min", "Leer 20 paginas", "Ejercicio", "Estudiar"].map((tip) => (
+                <span
+                  key={tip}
+                  className="px-3 py-1 bg-muted rounded-full text-xs text-muted-foreground"
+                >
+                  {tip}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Task card component
+function TaskCard({
+  task,
+  onToggle,
+  onDelete,
+}: {
+  task: {
+    id: string;
+    title: string;
+    color?: string | null;
+    has_progress?: boolean;
+    progress_target?: number | null;
+    progress_unit?: string | null;
+    completion?: {
+      status?: string;
+      progress_value?: number | null;
+    } | null;
+  };
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  const isCompleted = task.completion?.status === "completed";
+  const categoryKey = (task.color || "personal") as keyof typeof categoryConfig;
+  const category = categoryConfig[categoryKey] || categoryConfig.personal;
+  const CategoryIcon = category.icon;
+  const goalProgress =
+    task.has_progress && task.completion?.progress_value && task.progress_target
+      ? Math.round((task.completion.progress_value / task.progress_target) * 100)
+      : 0;
+
+  return (
+    <Card
+      className={`border-l-4 ${category.borderColor} transition-all hover:shadow-md ${
+        isCompleted ? "opacity-60" : ""
       }`}
     >
-      {label}
-    </button>
+      <CardContent className="py-4 px-4">
+        <div className="flex items-center gap-4">
+          <Checkbox
+            checked={isCompleted}
+            onCheckedChange={onToggle}
+            className="size-5"
+          />
+
+          <div className="flex-1 min-w-0">
+            <p
+              className={`font-medium ${
+                isCompleted
+                  ? "line-through text-muted-foreground"
+                  : "text-foreground"
+              }`}
+            >
+              {task.title}
+            </p>
+
+            {task.has_progress && task.progress_target && (
+              <div className="mt-2 space-y-1">
+                <Progress value={goalProgress} className="h-2" />
+                <p className="text-xs text-muted-foreground">
+                  {task.completion?.progress_value || 0}/{task.progress_target}{" "}
+                  {task.progress_unit || "min"}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div
+            className={`size-10 rounded-full flex items-center justify-center ${category.color}/10`}
+          >
+            <CategoryIcon
+              className={`size-5 ${category.color.replace("bg-", "text-")}`}
+            />
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8">
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onDelete}>
+                <Trash2 className="size-4 mr-2 text-red-500" />
+                <span className="text-red-500">Eliminar</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
