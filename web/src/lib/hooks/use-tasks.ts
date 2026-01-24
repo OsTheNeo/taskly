@@ -156,6 +156,7 @@ export function useTasks(firebaseUid: string | null) {
     addTask,
     editTask,
     removeTask,
+    deleteTask: removeTask, // alias
     toggleComplete,
     updateProgress,
   };
