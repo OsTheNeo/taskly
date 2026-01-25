@@ -2640,7 +2640,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                   Expanded(
                     child: AppButton(
                       label: 'Eliminar',
-                      variant: ButtonVariant.destructive,
+                      variant: AppButtonVariant.destructive,
                       iconName: DuotoneIcon.trash,
                       onPressed: () async {
                         Navigator.pop(context);
