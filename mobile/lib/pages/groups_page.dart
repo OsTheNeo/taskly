@@ -2505,39 +2505,195 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
   }
 
   Widget _buildGroupTaskItem(Map<String, dynamic> task, bool isDark) {
-    return AppCard(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _selectedColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: DuotoneIcon(
-                DuotoneIcon.clipboardCheck,
-                size: 20,
-                accentColor: _selectedColor,
+    final l10n = S.of(context)!;
+    return GestureDetector(
+      onTap: () => _showEditTaskSheet(task, isDark, l10n),
+      child: AppCard(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _selectedColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: DuotoneIcon(
+                  DuotoneIcon.clipboardCheck,
+                  size: 20,
+                  accentColor: _selectedColor,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              task['title'] as String? ?? 'Tarea',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    task['title'] as String? ?? 'Tarea',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                    ),
+                  ),
+                  if (task['description'] != null && (task['description'] as String).isNotEmpty)
+                    Text(
+                      task['description'] as String,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
               ),
             ),
-          ),
-        ],
+            DuotoneIcon(
+              DuotoneIcon.chevronRight,
+              size: 18,
+              color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  void _showEditTaskSheet(Map<String, dynamic> task, bool isDark, S l10n) {
+    final titleController = TextEditingController(text: task['title'] as String? ?? '');
+    final descController = TextEditingController(text: task['description'] as String? ?? '');
+    final currentRecurrence = task['recurrence'] as String? ?? 'once';
+    RecurrenceType selectedFrequency = _parseRecurrence(currentRecurrence);
+
+    AppBottomSheet.show(
+      context: context,
+      title: 'Editar tarea',
+      child: StatefulBuilder(
+        builder: (context, setModalState) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title
+              Text(
+                'Nombre de la tarea *',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                ),
+              ),
+              const SizedBox(height: 8),
+              AppInput(
+                controller: titleController,
+                placeholder: 'Nombre de la tarea',
+              ),
+              const SizedBox(height: 16),
+
+              // Description
+              Text(
+                'Descripcion (opcional)',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                ),
+              ),
+              const SizedBox(height: 8),
+              AppInput(
+                controller: descController,
+                placeholder: 'Detalles adicionales...',
+                maxLines: 2,
+              ),
+              const SizedBox(height: 16),
+
+              // Frequency
+              Text(
+                l10n.frequency,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildFrequencyChip(l10n.once, RecurrenceType.none, selectedFrequency, isDark, (v) => setModalState(() => selectedFrequency = v)),
+                  _buildFrequencyChip(l10n.daily, RecurrenceType.daily, selectedFrequency, isDark, (v) => setModalState(() => selectedFrequency = v)),
+                  _buildFrequencyChip(l10n.weekly, RecurrenceType.weekly, selectedFrequency, isDark, (v) => setModalState(() => selectedFrequency = v)),
+                  _buildFrequencyChip(l10n.monthly, RecurrenceType.monthly, selectedFrequency, isDark, (v) => setModalState(() => selectedFrequency = v)),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Actions
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      label: 'Eliminar',
+                      variant: ButtonVariant.destructive,
+                      iconName: DuotoneIcon.trash,
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        final taskId = task['id'] as String?;
+                        if (taskId != null) {
+                          await _dataService.deleteTask(taskId);
+                          await _loadGroupData();
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppButton(
+                      label: 'Guardar',
+                      iconName: DuotoneIcon.check,
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        final taskId = task['id'] as String?;
+                        if (taskId != null) {
+                          await _dataService.updateTask(
+                            taskId: taskId,
+                            title: titleController.text.trim(),
+                            description: descController.text.trim().isEmpty ? null : descController.text.trim(),
+                          );
+                          await _loadGroupData();
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  RecurrenceType _parseRecurrence(String recurrence) {
+    switch (recurrence) {
+      case 'daily':
+        return RecurrenceType.daily;
+      case 'weekly':
+        return RecurrenceType.weekly;
+      case 'biweekly':
+        return RecurrenceType.biweekly;
+      case 'monthly':
+        return RecurrenceType.monthly;
+      default:
+        return RecurrenceType.none;
+    }
   }
 
   void _showIconSelector(bool isDark) {

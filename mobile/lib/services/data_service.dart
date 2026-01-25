@@ -550,13 +550,15 @@ class DataService {
     String? icon,
     String? color,
     String? imageUrl,
+    bool clearImage = false,
   }) async {
     try {
       final updates = <String, dynamic>{};
-      if (name != null) updates['name'] = name;
-      if (icon != null) updates['icon'] = icon;
-      if (color != null) updates['color'] = color;
-      if (imageUrl != null) updates['image_url'] = imageUrl;
+      if (name != null && name.isNotEmpty) updates['name'] = name;
+      if (icon != null && icon.isNotEmpty) updates['icon'] = icon;
+      if (color != null && color.isNotEmpty) updates['color'] = color;
+      if (imageUrl != null && imageUrl.isNotEmpty) updates['image_url'] = imageUrl;
+      if (clearImage || (imageUrl != null && imageUrl.isEmpty)) updates['image_url'] = null;
 
       if (updates.isEmpty) return null;
 

@@ -1402,7 +1402,7 @@ class _HomePageState extends State<HomePage> {
     final days = List.generate(7, (i) => today.add(Duration(days: i - 3)));
 
     return SizedBox(
-      height: 70,
+      height: 52,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1418,13 +1418,13 @@ class _HomePageState extends State<HomePage> {
               _loadTasksForDate(date);
             },
             child: Container(
-              width: 48,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: 44,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
               decoration: BoxDecoration(
                 color: isSelected
                     ? settings.accentColor
                     : (isDark ? AppColors.cardDark : AppColors.card),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: isToday && !isSelected
                     ? Border.all(color: settings.accentColor, width: 2)
                     : null,
@@ -1435,18 +1435,18 @@ class _HomePageState extends State<HomePage> {
                   Text(
                     _getDayName(date.weekday),
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 9,
                       fontWeight: FontWeight.w500,
                       color: isSelected
                           ? Colors.white
                           : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     '${date.day}',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: isSelected
                           ? Colors.white
