@@ -3272,6 +3272,9 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
     final titleController = TextEditingController();
     final descController = TextEditingController();
     bool isFormValid = false;
+    RecurrenceType selectedFrequency = RecurrenceType.none;
+    TimeOfDay? reminderTime;
+    bool reminderEnabled = false;
 
     AppBottomSheet.show(
       context: context,
@@ -3350,6 +3353,103 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                 placeholder: 'Detalles adicionales...',
                 maxLines: 2,
               ),
+              const SizedBox(height: 16),
+
+              // Frequency selector
+              Text(
+                l10n.frequency,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildFrequencyChip(l10n.once, RecurrenceType.none, selectedFrequency, isDark, (v) => setModalState(() => selectedFrequency = v)),
+                  _buildFrequencyChip(l10n.daily, RecurrenceType.daily, selectedFrequency, isDark, (v) => setModalState(() => selectedFrequency = v)),
+                  _buildFrequencyChip(l10n.weekly, RecurrenceType.weekly, selectedFrequency, isDark, (v) => setModalState(() => selectedFrequency = v)),
+                  _buildFrequencyChip(l10n.monthly, RecurrenceType.monthly, selectedFrequency, isDark, (v) => setModalState(() => selectedFrequency = v)),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Reminder
+              GestureDetector(
+                onTap: () async {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: reminderTime ?? const TimeOfDay(hour: 9, minute: 0),
+                  );
+                  if (time != null) {
+                    setModalState(() {
+                      reminderTime = time;
+                      reminderEnabled = true;
+                    });
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      DuotoneIcon(
+                        DuotoneIcon.bell,
+                        size: 20,
+                        accentColor: reminderEnabled ? _selectedColor : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.reminder,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                              ),
+                            ),
+                            if (reminderEnabled && reminderTime != null)
+                              Text(
+                                'A las ${reminderTime!.format(context)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (reminderEnabled)
+                        GestureDetector(
+                          onTap: () => setModalState(() {
+                            reminderEnabled = false;
+                            reminderTime = null;
+                          }),
+                          child: DuotoneIcon(
+                            DuotoneIcon.xmark,
+                            size: 18,
+                            color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                          ),
+                        )
+                      else
+                        DuotoneIcon(
+                          DuotoneIcon.chevronRight,
+                          size: 18,
+                          color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
 
               // Save button
@@ -3373,6 +3473,10 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                               : descController.text.trim(),
                           taskType: 'task',
                           householdId: widget.group['id'] as String?,
+                          recurrence: _mapRecurrence(selectedFrequency),
+                          reminderTime: reminderEnabled && reminderTime != null
+                              ? '${reminderTime!.hour.toString().padLeft(2, '0')}:${reminderTime!.minute.toString().padLeft(2, '0')}'
+                              : null,
                         );
 
                         await _loadGroupData();
@@ -3397,6 +3501,28 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildFrequencyChip(String label, RecurrenceType type, RecurrenceType selected, bool isDark, ValueChanged<RecurrenceType> onTap) {
+    final isSelected = type == selected;
+    return GestureDetector(
+      onTap: () => onTap(type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? _selectedColor : (isDark ? AppColors.secondaryDark : AppColors.secondary),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: isSelected ? Colors.white : (isDark ? AppColors.foregroundDark : AppColors.foreground),
+          ),
+        ),
       ),
     );
   }

@@ -142,6 +142,7 @@ class DataService {
     double? progressTarget,
     String? categoryId,
     String? householdId,
+    String? reminderTime,
   }) async {
     try {
       final profile = await getProfile(visitorId);
@@ -164,6 +165,7 @@ class DataService {
         'progress_unit': progressUnit,
         'progress_target': progressTarget,
         if (householdId != null) 'household_id': householdId,
+        if (reminderTime != null) 'reminder_time': reminderTime,
       };
 
       final response = await _client
