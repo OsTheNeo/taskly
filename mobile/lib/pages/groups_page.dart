@@ -1896,7 +1896,8 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
               icon: DuotoneIcon(
                 DuotoneIcon.gear,
                 size: 22,
-                color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                strokeColor: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                accentColor: settings.accentColor,
               ),
               onPressed: () => _showGroupSettings(isDark),
             ),
@@ -1952,47 +1953,8 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
           Row(
             children: [
               GestureDetector(
-                onTap: _isAdmin ? () => _showIconSelector(isDark) : null,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: _selectedColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _selectedColor.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: DuotoneIcon(
-                          _selectedIcon,
-                          size: 32,
-                          accentColor: _selectedColor,
-                        ),
-                      ),
-                      if (_isAdmin)
-                        Positioned(
-                          right: 4,
-                          bottom: 4,
-                          child: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.white : Colors.black,
-                              shape: BoxShape.circle,
-                            ),
-                            child: DuotoneIcon(
-                              DuotoneIcon.sliders,
-                              size: 10,
-                              color: isDark ? Colors.black : Colors.white,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+                onTap: _isAdmin ? () => _showEditGroupSheet(isDark) : null,
+                child: _buildGroupAvatar(isDark),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -2104,6 +2066,295 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGroupAvatar(bool isDark) {
+    final imageUrl = widget.group['image_url'] as String?;
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: _selectedColor.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _selectedColor.withValues(alpha: 0.3),
+        ),
+      ),
+      child: hasImage
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Image.network(
+                imageUrl,
+                width: 64,
+                height: 64,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Center(
+                  child: DuotoneIcon(
+                    _selectedIcon,
+                    size: 32,
+                    accentColor: _selectedColor,
+                  ),
+                ),
+              ),
+            )
+          : Center(
+              child: DuotoneIcon(
+                _selectedIcon,
+                size: 32,
+                accentColor: _selectedColor,
+              ),
+            ),
+    );
+  }
+
+  void _showEditGroupSheet(bool isDark) {
+    final nameController = TextEditingController(text: widget.group['name'] as String? ?? '');
+    String tempIcon = _selectedIcon;
+    Color tempColor = _selectedColor;
+    final currentImageUrl = widget.group['image_url'] as String?;
+    String? tempImageUrl = currentImageUrl;
+    bool isUploading = false;
+
+    AppBottomSheet.show(
+      context: context,
+      title: 'Editar grupo',
+      child: StatefulBuilder(
+        builder: (context, setModalState) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Avatar y botón de cambiar foto
+              Center(
+                child: GestureDetector(
+                  onTap: () async {
+                    final source = await showModalBottomSheet<ImageSource>(
+                      context: context,
+                      builder: (ctx) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.camera_alt),
+                              title: const Text('Tomar foto'),
+                              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.photo_library),
+                              title: const Text('Elegir de galería'),
+                              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                            ),
+                            if (tempImageUrl != null && tempImageUrl!.isNotEmpty)
+                              ListTile(
+                                leading: const Icon(Icons.delete, color: AppColors.destructive),
+                                title: const Text('Eliminar foto', style: TextStyle(color: AppColors.destructive)),
+                                onTap: () => Navigator.pop(ctx, null),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+
+                    if (source != null) {
+                      setModalState(() => isUploading = true);
+                      final url = await _storageService.pickAndUploadImage(
+                        source: source,
+                        folder: 'groups',
+                        oldImageUrl: tempImageUrl,
+                      );
+                      setModalState(() {
+                        isUploading = false;
+                        if (url != null) tempImageUrl = url;
+                      });
+                    } else if (tempImageUrl != null && tempImageUrl!.isNotEmpty) {
+                      setModalState(() => tempImageUrl = '');
+                    }
+                  },
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: tempColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: tempColor.withValues(alpha: 0.3)),
+                        ),
+                        child: isUploading
+                            ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                            : (tempImageUrl != null && tempImageUrl!.isNotEmpty)
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(19),
+                                    child: Image.network(
+                                      tempImageUrl!,
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Center(
+                                        child: DuotoneIcon(tempIcon, size: 40, accentColor: tempColor),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: DuotoneIcon(tempIcon, size: 40, accentColor: tempColor),
+                                  ),
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white : Colors.black,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: DuotoneIcon(
+                              DuotoneIcon.camera,
+                              size: 14,
+                              strokeColor: isDark ? Colors.black : Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Nombre
+              Text(
+                'Nombre',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                ),
+              ),
+              const SizedBox(height: 8),
+              AppInput(
+                controller: nameController,
+                placeholder: 'Nombre del grupo',
+              ),
+              const SizedBox(height: 20),
+
+              // Icono
+              Text(
+                'Icono',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  DuotoneIcon.home, DuotoneIcon.users, DuotoneIcon.heart,
+                  DuotoneIcon.star, DuotoneIcon.suitcase, DuotoneIcon.book,
+                  DuotoneIcon.rocket, DuotoneIcon.leaf, DuotoneIcon.flame,
+                ].map((iconName) {
+                  final isSelected = tempIcon == iconName;
+                  return GestureDetector(
+                    onTap: () => setModalState(() => tempIcon = iconName),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: isSelected ? tempColor.withValues(alpha: 0.2) : (isDark ? AppColors.secondaryDark : AppColors.secondary),
+                        borderRadius: BorderRadius.circular(10),
+                        border: isSelected ? Border.all(color: tempColor, width: 2) : null,
+                      ),
+                      child: Center(
+                        child: DuotoneIcon(iconName, size: 22, accentColor: tempColor),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+
+              // Color
+              Text(
+                'Color',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: CategoryColors.accentColors.map((color) {
+                  final isSelected = color.toARGB32() == tempColor.toARGB32();
+                  return GestureDetector(
+                    onTap: () => setModalState(() => tempColor = color),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isDark ? Colors.white : Colors.black,
+                          width: isSelected ? 3 : 1,
+                        ),
+                      ),
+                      child: isSelected
+                          ? Center(
+                              child: DuotoneIcon(
+                                DuotoneIcon.check,
+                                size: 18,
+                                strokeColor: color.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+                              ),
+                            )
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+
+              // Guardar
+              AppButton(
+                label: 'Guardar cambios',
+                fullWidth: true,
+                iconName: DuotoneIcon.check,
+                onPressed: () async {
+                  Navigator.pop(context);
+
+                  final householdId = widget.group['id'] as String?;
+                  if (householdId != null) {
+                    setState(() {
+                      _selectedIcon = tempIcon;
+                      _selectedColor = tempColor;
+                    });
+
+                    await _dataService.updateHousehold(
+                      householdId: householdId,
+                      name: nameController.text.trim(),
+                      icon: tempIcon,
+                      color: CategoryColors.toHex(tempColor),
+                      imageUrl: tempImageUrl ?? '',
+                    );
+                    widget.onGroupUpdated();
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          );
+        },
       ),
     );
   }
