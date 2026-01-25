@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 
 import 'auth_service.dart';
 import 'data_service.dart';
+import 'storage_service.dart';
 import '../state/settings_state.dart';
 
 final getIt = GetIt.instance;
@@ -17,4 +18,5 @@ Future<void> configureDependencies() async {
   // ============================================================
   getIt.registerLazySingleton<AuthService>(() => AuthService());
   getIt.registerLazySingleton<DataService>(() => DataService());
+  getIt.registerLazySingleton<StorageService>(() => StorageService());
 }

@@ -65,11 +65,14 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^6.0.2
   image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10+1
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to

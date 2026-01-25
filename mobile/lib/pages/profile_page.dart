@@ -126,11 +126,13 @@ class _ProfilePageState extends State<ProfilePage> {
               color: accentColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: DuotoneIcon(
-              DuotoneIcon.user,
-              size: 32,
-              color: accentColor,
-              accentColor: accentColor,
+            child: Center(
+              child: DuotoneIcon(
+                DuotoneIcon.user,
+                size: 32,
+                color: accentColor,
+                accentColor: accentColor,
+              ),
             ),
           ),
 
@@ -223,11 +225,13 @@ class _ProfilePageState extends State<ProfilePage> {
               color: accentColor.withValues(alpha: 0.1),
               borderRadius: AppSpacing.borderRadiusMd,
             ),
-            child: DuotoneIcon(
-              iconName,
-              color: accentColor,
-              accentColor: accentColor,
-              size: 22,
+            child: Center(
+              child: DuotoneIcon(
+                iconName,
+                color: accentColor,
+                accentColor: accentColor,
+                size: 22,
+              ),
             ),
           ),
           const SizedBox(width: 12),

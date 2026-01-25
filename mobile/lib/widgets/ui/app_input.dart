@@ -80,17 +80,31 @@ class AppInput extends StatelessWidget {
               color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
             ),
             prefixIcon: prefix ?? (prefixIconName != null
-                ? DuotoneIcon(
-                    prefixIconName!,
-                    size: 18,
-                    color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                ? SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: DuotoneIcon(
+                        prefixIconName!,
+                        size: 22,
+                        strokeColor: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                        accentColor: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                      ),
+                    ),
                   )
                 : null),
             suffixIcon: suffix ?? (suffixIconName != null
-                ? DuotoneIcon(
-                    suffixIconName!,
-                    size: 18,
-                    color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                ? SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: DuotoneIcon(
+                        suffixIconName!,
+                        size: 22,
+                        strokeColor: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                        accentColor: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                      ),
+                    ),
                   )
                 : null),
             filled: true,

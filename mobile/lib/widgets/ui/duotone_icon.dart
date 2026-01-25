@@ -101,6 +101,7 @@ class DuotoneIcon extends StatelessWidget {
   static const String globe = 'globe';
   static const String lock = 'lock';
   static const String mail = 'mail';
+  static const String password = 'password';
   static const String userPlus = 'user-plus';
 
   @override

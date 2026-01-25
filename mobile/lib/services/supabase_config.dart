@@ -14,4 +14,7 @@ class SupabaseConfig {
   static const String taskAssignmentsTable = 'taskly_task_assignments';
   static const String dailySummariesTable = 'taskly_daily_summaries';
   static const String categoriesTable = 'taskly_categories';
+
+  // Storage buckets
+  static const String imagesBucket = 'taskly-images';
 }

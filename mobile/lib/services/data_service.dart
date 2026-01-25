@@ -541,18 +541,20 @@ class DataService {
     }
   }
 
-  /// Actualiza un hogar (nombre, icono, color)
+  /// Actualiza un hogar (nombre, icono, color, imagen)
   Future<Map<String, dynamic>?> updateHousehold({
     required String householdId,
     String? name,
     String? icon,
     String? color,
+    String? imageUrl,
   }) async {
     try {
       final updates = <String, dynamic>{};
       if (name != null) updates['name'] = name;
       if (icon != null) updates['icon'] = icon;
       if (color != null) updates['color'] = color;
+      if (imageUrl != null) updates['image_url'] = imageUrl;
 
       if (updates.isEmpty) return null;
 

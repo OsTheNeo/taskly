@@ -217,7 +217,7 @@ class SEs extends S {
   String get emailPlaceholder => 'tu@email.com';
 
   @override
-  String get password => 'Contrasena';
+  String get password => 'Contraseña';
 
   @override
   String get passwordPlaceholder => '********';
@@ -229,7 +229,7 @@ class SEs extends S {
   String get namePlaceholder => 'Tu nombre';
 
   @override
-  String get forgotPassword => 'Olvidaste tu contrasena?';
+  String get forgotPassword => '¿Olvidaste tu contraseña?';
 
   @override
   String get notifications => 'Notificaciones';

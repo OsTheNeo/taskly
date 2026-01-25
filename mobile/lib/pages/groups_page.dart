@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:signals/signals_flutter.dart';
@@ -7,6 +8,7 @@ import '../l10n/app_localizations.dart';
 import '../models/task_category.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
+import '../services/storage_service.dart';
 import '../services/injection.dart';
 import '../state/settings_state.dart' as settings;
 import '../widgets/task_form.dart';
@@ -1806,6 +1808,7 @@ class GroupDetailPage extends StatefulWidget {
 class _GroupDetailPageState extends State<GroupDetailPage> {
   AuthService get _authService => getIt<AuthService>();
   DataService get _dataService => getIt<DataService>();
+  StorageService get _storageService => getIt<StorageService>();
   User? get _currentUser => _authService.currentUser;
 
   bool get _isAdmin => widget.role == 'owner';
@@ -2494,6 +2497,15 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
           ),
           _buildSettingsItem(
             isDark: isDark,
+            icon: DuotoneIcon.camera,
+            label: 'Cambiar foto del grupo',
+            onTap: () {
+              Navigator.pop(context);
+              _showImagePicker(isDark);
+            },
+          ),
+          _buildSettingsItem(
+            isDark: isDark,
             icon: DuotoneIcon.userPlus,
             label: 'Gestionar administradores',
             onTap: () {
@@ -2565,6 +2577,142 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
         ),
       ),
     );
+  }
+
+  void _showImagePicker(bool isDark) {
+    final currentImageUrl = widget.group['image_url'] as String?;
+
+    AppBottomSheet.show(
+      context: context,
+      title: 'Foto del grupo',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Preview actual
+          if (currentImageUrl != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                currentImageUrl,
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: _selectedColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: DuotoneIcon(
+                      _selectedIcon,
+                      size: 48,
+                      accentColor: _selectedColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // Opciones
+          _buildSettingsItem(
+            isDark: isDark,
+            icon: DuotoneIcon.camera,
+            label: 'Tomar foto',
+            onTap: () async {
+              Navigator.pop(context);
+              await _uploadGroupImage(ImageSource.camera, currentImageUrl);
+            },
+          ),
+          _buildSettingsItem(
+            isDark: isDark,
+            icon: DuotoneIcon.image,
+            label: 'Elegir de galería',
+            onTap: () async {
+              Navigator.pop(context);
+              await _uploadGroupImage(ImageSource.gallery, currentImageUrl);
+            },
+          ),
+          if (currentImageUrl != null)
+            _buildSettingsItem(
+              isDark: isDark,
+              icon: DuotoneIcon.trash,
+              label: 'Eliminar foto',
+              isDestructive: true,
+              onTap: () async {
+                Navigator.pop(context);
+                await _removeGroupImage(currentImageUrl);
+              },
+            ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _uploadGroupImage(ImageSource source, String? oldImageUrl) async {
+    final householdId = widget.group['id'] as String?;
+    if (householdId == null) return;
+
+    // Mostrar loading
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Subiendo imagen...'),
+        duration: Duration(seconds: 30),
+      ),
+    );
+
+    final imageUrl = await _storageService.pickAndUploadImage(
+      source: source,
+      folder: 'groups',
+      oldImageUrl: oldImageUrl,
+    );
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    if (imageUrl != null) {
+      await _dataService.updateHousehold(
+        householdId: householdId,
+        imageUrl: imageUrl,
+      );
+      widget.onGroupUpdated();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto actualizada')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al subir la imagen'),
+            backgroundColor: AppColors.destructive,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeGroupImage(String imageUrl) async {
+    final householdId = widget.group['id'] as String?;
+    if (householdId == null) return;
+
+    // Por ahora solo quitamos la referencia, el storage cleanup se puede hacer después
+    await _dataService.updateHousehold(
+      householdId: householdId,
+      imageUrl: '',
+    );
+    widget.onGroupUpdated();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto eliminada')),
+      );
+    }
   }
 
   void _showInviteSheet(bool isDark, S l10n) {

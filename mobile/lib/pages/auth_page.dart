@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../services/injection.dart';
 import '../services/auth_service.dart';
@@ -116,7 +117,7 @@ class _AuthPageState extends State<AuthPage> {
                 placeholder: l10n.passwordPlaceholder,
                 controller: _passwordController,
                 obscureText: true,
-                prefixIconName: DuotoneIcon.lock,
+                prefixIconName: DuotoneIcon.password,
               ),
 
               if (_isLogin) ...[
@@ -222,22 +223,6 @@ class _AuthPageState extends State<AuthPage> {
                 ),
               ),
 
-              const SizedBox(height: 16),
-
-              // Skip Button
-              Center(
-                child: TextButton(
-                  onPressed: _handleSkip,
-                  child: Text(
-                    l10n.continueWithoutAccount,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
-                    ),
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 24),
             ],
           ),
@@ -301,7 +286,7 @@ class _AuthPageState extends State<AuthPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Ingresa tu correo electronico y te enviaremos instrucciones para restablecer tu contrasena.',
+              'Ingresa tu correo electrónico y te enviaremos instrucciones para restablecer tu contraseña.',
               style: TextStyle(
                 color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
               ),
@@ -403,7 +388,7 @@ class _AuthPageState extends State<AuthPage> {
     }
 
     // Validar formato de email
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+    if (!RegExp(r'^[\w\.\-\+]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor ingresa un email valido')),
       );
@@ -413,7 +398,7 @@ class _AuthPageState extends State<AuthPage> {
     // Validar password minimo 6 caracteres
     if (password.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('La contrasena debe tener al menos 6 caracteres')),
+        const SnackBar(content: Text('La contraseña debe tener al menos 6 caracteres')),
       );
       return;
     }
@@ -444,13 +429,13 @@ class _AuthPageState extends State<AuthPage> {
             message = 'No existe una cuenta con este email';
             break;
           case 'wrong-password':
-            message = 'Contrasena incorrecta';
+            message = 'Contraseña incorrecta';
             break;
           case 'email-already-in-use':
             message = 'Ya existe una cuenta con este email';
             break;
           case 'weak-password':
-            message = 'La contrasena es muy debil';
+            message = 'La contraseña es muy débil';
             break;
           case 'invalid-email':
             message = 'El email no es valido';
@@ -484,9 +469,6 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
-  void _handleSkip() {
-    context.go('/');
-  }
 }
 
 class _GoogleSignInButton extends StatelessWidget {
@@ -528,10 +510,10 @@ class _GoogleSignInButton extends StatelessWidget {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
+                  SvgPicture.asset(
+                    'assets/icons/google.svg',
                     width: 20,
                     height: 20,
-                    child: CustomPaint(painter: _GoogleLogoPainter()),
                   ),
                   const SizedBox(width: 12),
                   Text(
@@ -547,65 +529,4 @@ class _GoogleSignInButton extends StatelessWidget {
       ),
     );
   }
-}
-
-class _GoogleLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
-
-    final Paint paint = Paint()..style = PaintingStyle.fill;
-
-    // Blue
-    paint.color = const Color(0xFF4285F4);
-    canvas.drawArc(
-      Rect.fromLTWH(0, 0, w, h),
-      -0.5,
-      1.5,
-      true,
-      paint,
-    );
-
-    // Green
-    paint.color = const Color(0xFF34A853);
-    canvas.drawArc(
-      Rect.fromLTWH(0, 0, w, h),
-      1.0,
-      1.0,
-      true,
-      paint,
-    );
-
-    // Yellow
-    paint.color = const Color(0xFFFBBC05);
-    canvas.drawArc(
-      Rect.fromLTWH(0, 0, w, h),
-      2.0,
-      1.0,
-      true,
-      paint,
-    );
-
-    // Red
-    paint.color = const Color(0xFFEA4335);
-    canvas.drawArc(
-      Rect.fromLTWH(0, 0, w, h),
-      3.0,
-      1.0,
-      true,
-      paint,
-    );
-
-    // White center
-    paint.color = Colors.white;
-    canvas.drawCircle(
-      Offset(w / 2, h / 2),
-      w * 0.35,
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
