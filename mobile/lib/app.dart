@@ -15,14 +15,16 @@ class TasklyApp extends StatelessWidget {
     return Watch((context) {
       final currentThemeMode = themeMode.value;
       final currentAccentColorIndex = accentColorIndex.value;
+      final currentFontFamilyIndex = fontFamilyIndex.value;
       final currentLocale = locale.value;
       final currentAccentColor = accentColors[currentAccentColorIndex];
+      final currentFontFamily = fontFamilies[currentFontFamilyIndex];
 
       return MaterialApp.router(
         title: 'Taskly',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme(currentAccentColor),
-        darkTheme: AppTheme.darkTheme(currentAccentColor),
+        theme: AppTheme.lightTheme(currentAccentColor, fontFamily: currentFontFamily),
+        darkTheme: AppTheme.darkTheme(currentAccentColor, fontFamily: currentFontFamily),
         themeMode: currentThemeMode,
         routerConfig: appRouter,
         locale: currentLocale,

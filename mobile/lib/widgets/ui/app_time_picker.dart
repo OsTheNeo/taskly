@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app_colors.dart';
+import '../../state/settings_state.dart' as settings;
 
 /// Apple-style wheel time picker
 class AppTimePicker extends StatefulWidget {
@@ -79,21 +80,24 @@ class _AppTimePickerState extends State<AppTimePicker> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = settings.accentColor;
 
     return SizedBox(
       height: 220,
       child: Stack(
         children: [
-          // Selection highlight
+          // Selection highlight with accent color
           Center(
             child: Container(
               height: 44,
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.secondaryDark.withValues(alpha: 0.8)
-                    : AppColors.secondary.withValues(alpha: 0.8),
+                color: accentColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: accentColor.withValues(alpha: 0.2),
+                  width: 1,
+                ),
               ),
             ),
           ),
@@ -200,6 +204,7 @@ class _AppTimePickerState extends State<AppTimePicker> {
     required String Function(int) itemBuilder,
     required bool isDark,
   }) {
+    final accentColor = settings.accentColor;
     return ListWheelScrollView.useDelegate(
       controller: controller,
       itemExtent: 44,
@@ -219,7 +224,7 @@ class _AppTimePickerState extends State<AppTimePicker> {
                 fontSize: isSelected ? 24 : 20,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
-                    ? (isDark ? AppColors.foregroundDark : AppColors.foreground)
+                    ? accentColor
                     : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
               ),
               child: Text(itemBuilder(index)),
@@ -232,6 +237,7 @@ class _AppTimePickerState extends State<AppTimePicker> {
 
   Widget _buildPeriodWheel(bool isDark) {
     final periods = ['AM', 'PM'];
+    final accentColor = settings.accentColor;
 
     return ListWheelScrollView.useDelegate(
       controller: _periodController,
@@ -256,7 +262,7 @@ class _AppTimePickerState extends State<AppTimePicker> {
                 fontSize: isSelected ? 22 : 18,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected
-                    ? (isDark ? AppColors.foregroundDark : AppColors.foreground)
+                    ? accentColor
                     : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
               ),
               child: Text(periods[index]),
@@ -268,6 +274,7 @@ class _AppTimePickerState extends State<AppTimePicker> {
   }
 
   Widget _buildSeparator(bool isDark) {
+    final accentColor = settings.accentColor;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Text(
@@ -275,14 +282,14 @@ class _AppTimePickerState extends State<AppTimePicker> {
         style: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w600,
-          color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+          color: accentColor,
         ),
       ),
     );
   }
 }
 
-/// Shows an Apple-style time picker in a bottom sheet
+/// Shows an Apple-style time picker in a centered modal dialog
 Future<TimeOfDay?> showAppTimePicker({
   required BuildContext context,
   required TimeOfDay initialTime,
@@ -290,85 +297,124 @@ Future<TimeOfDay?> showAppTimePicker({
 }) {
   TimeOfDay selectedTime = initialTime;
 
-  return showModalBottomSheet<TimeOfDay>(
+  return showDialog<TimeOfDay>(
     context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+    barrierDismissible: true,
+    barrierColor: Colors.black54,
     builder: (context) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
+      final accentColor = settings.accentColor;
 
-      return Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.cardDark : AppColors.card,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.borderDark : AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 24),
+          constraints: const BoxConstraints(maxWidth: 340),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardDark : AppColors.card,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
-              // Header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'Cancelar',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: isDark
-                              ? AppColors.mutedForegroundDark
-                              : AppColors.mutedForeground,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      'Seleccionar hora',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? AppColors.foregroundDark : AppColors.foreground,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, selectedTime),
-                      child: Text(
-                        'Listo',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.primaryDark : AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Time picker
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: AppTimePicker(
-                  initialTime: initialTime,
-                  use24HourFormat: use24HourFormat,
-                  onTimeChanged: (time) => selectedTime = time,
-                ),
-              ),
-              const SizedBox(height: 20),
             ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with accent color
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.08),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.access_time_rounded,
+                        color: accentColor,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Seleccionar hora',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Time picker
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: AppTimePicker(
+                    initialTime: initialTime,
+                    use24HourFormat: use24HourFormat,
+                    onTimeChanged: (time) => selectedTime = time,
+                  ),
+                ),
+                // Buttons
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancelar',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? AppColors.mutedForegroundDark
+                                  : AppColors.mutedForeground,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, selectedTime),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: accentColor,
+                            foregroundColor: accentColor.computeLuminance() > 0.5
+                                ? Colors.black
+                                : Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Confirmar',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );

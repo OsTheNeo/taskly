@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
+import 'duotone_icon.dart';
 
 class AppInput extends StatelessWidget {
   final String? label;
@@ -13,8 +14,8 @@ class AppInput extends StatelessWidget {
   final int maxLines;
   final Widget? prefix;
   final Widget? suffix;
-  final IconData? prefixIcon;
-  final IconData? suffixIcon;
+  final String? prefixIconName;
+  final String? suffixIconName;
   final bool enabled;
   final FocusNode? focusNode;
   final TextInputAction? textInputAction;
@@ -32,8 +33,8 @@ class AppInput extends StatelessWidget {
     this.maxLines = 1,
     this.prefix,
     this.suffix,
-    this.prefixIcon,
-    this.suffixIcon,
+    this.prefixIconName,
+    this.suffixIconName,
     this.enabled = true,
     this.focusNode,
     this.textInputAction,
@@ -78,16 +79,16 @@ class AppInput extends StatelessWidget {
             hintStyle: TextStyle(
               color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
             ),
-            prefixIcon: prefix ?? (prefixIcon != null
-                ? Icon(
-                    prefixIcon,
+            prefixIcon: prefix ?? (prefixIconName != null
+                ? DuotoneIcon(
+                    prefixIconName!,
                     size: 18,
                     color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
                   )
                 : null),
-            suffixIcon: suffix ?? (suffixIcon != null
-                ? Icon(
-                    suffixIcon,
+            suffixIcon: suffix ?? (suffixIconName != null
+                ? DuotoneIcon(
+                    suffixIconName!,
                     size: 18,
                     color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
                   )

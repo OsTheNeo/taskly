@@ -1,8 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
-import 'package:radix_icons/radix_icons.dart';
 import '../l10n/app_localizations.dart';
 import '../models/task_category.dart';
 import '../services/auth_service.dart';
@@ -57,7 +55,8 @@ class _StatsPageState extends State<StatsPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final l10n = S.of(context)!;
+    // ignore: unused_local_variable - keeping for future localization
+    final _ = S.of(context)!;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
@@ -107,8 +106,8 @@ class _StatsPageState extends State<StatsPage> {
                           padding: const EdgeInsets.all(32),
                           child: Column(
                             children: [
-                              Icon(
-                                RadixIcons.Activity_Log,
+                              DuotoneIcon(
+                                DuotoneIcon.chart,
                                 size: 48,
                                 color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
                               ),
@@ -167,8 +166,8 @@ class _StatsPageState extends State<StatsPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  RadixIcons.Lightning_Bolt,
+                DuotoneIcon(
+                  DuotoneIcon.bolt,
                   color: AppColors.primary,
                   size: 24,
                 ),
@@ -209,14 +208,14 @@ class _StatsPageState extends State<StatsPage> {
                 Row(
                   children: [
                     _buildStatBadge(
-                      RadixIcons.Checkbox,
+                      DuotoneIcon.clipboardCheck,
                       '$total',
                       'completadas',
                       isDark,
                     ),
                     const SizedBox(width: 16),
                     _buildStatBadge(
-                      RadixIcons.Calendar,
+                      DuotoneIcon.calendar,
                       '30',
                       'dias',
                       isDark,
@@ -231,12 +230,12 @@ class _StatsPageState extends State<StatsPage> {
     );
   }
 
-  Widget _buildStatBadge(IconData icon, String value, String label, bool isDark) {
+  Widget _buildStatBadge(String iconName, String value, String label, bool isDark) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
+        DuotoneIcon(
+          iconName,
           size: 14,
           color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
         ),
@@ -428,10 +427,10 @@ class _StatsPageState extends State<StatsPage> {
                       color: category.accentColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(
+                    child: DuotoneIcon(
                       status == 'completed'
-                          ? RadixIcons.Check
-                          : (status == 'partial' ? RadixIcons.Timer : RadixIcons.Cross_2),
+                          ? DuotoneIcon.check
+                          : (status == 'partial' ? DuotoneIcon.timer : DuotoneIcon.x),
                       color: category.accentColor,
                       size: 18,
                     ),

@@ -22,37 +22,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Plus,
-  User,
-  Target,
-  BookOpen,
-  Activity,
-  Briefcase,
-  Sun,
-  Loader2,
-  Trash2,
-  MoreVertical,
-  Sparkles,
-  CheckCircle2,
-  Calendar,
-} from "lucide-react";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Loader2 } from "lucide-react";
+import { DuotoneIcon, DuotoneIconNames } from "@/components/ui/duotone-icon";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useTasks } from "@/lib/hooks/use-tasks";
 import type { RecurrenceFrequency } from "@/lib/supabase";
 
-// Category definitions
+// Category definitions with duotone icons
 const categoryConfig = {
-  study: { color: "bg-violet-500", borderColor: "border-l-violet-500", icon: BookOpen, name: "Estudio" },
-  fitness: { color: "bg-orange-500", borderColor: "border-l-orange-500", icon: Activity, name: "Fitness" },
-  mindfulness: { color: "bg-cyan-500", borderColor: "border-l-cyan-500", icon: Sun, name: "Mindfulness" },
-  work: { color: "bg-blue-500", borderColor: "border-l-blue-500", icon: Briefcase, name: "Trabajo" },
-  personal: { color: "bg-gray-500", borderColor: "border-l-gray-500", icon: User, name: "Personal" },
+  study: { color: "bg-violet-500", textColor: "text-violet-500", borderColor: "border-l-violet-500", icon: DuotoneIconNames.book, name: "Estudio" },
+  fitness: { color: "bg-orange-500", textColor: "text-orange-500", borderColor: "border-l-orange-500", icon: DuotoneIconNames.flame, name: "Fitness" },
+  mindfulness: { color: "bg-cyan-500", textColor: "text-cyan-500", borderColor: "border-l-cyan-500", icon: DuotoneIconNames.sun, name: "Mindfulness" },
+  work: { color: "bg-blue-500", textColor: "text-blue-500", borderColor: "border-l-blue-500", icon: DuotoneIconNames.suitcase, name: "Trabajo" },
+  personal: { color: "bg-gray-500", textColor: "text-gray-500", borderColor: "border-l-gray-500", icon: DuotoneIconNames.user, name: "Personal" },
 };
 
 const RECURRENCE_OPTIONS = [
@@ -167,7 +154,9 @@ export default function AppDashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md mx-4">
           <CardContent className="py-8 text-center">
-            <User className="size-12 mx-auto text-muted-foreground mb-4" />
+            <div className="mx-auto mb-4 flex justify-center">
+              <DuotoneIcon name={DuotoneIconNames.user} size={48} className="text-muted-foreground" />
+            </div>
             <h2 className="text-xl font-semibold mb-2">Bienvenido a Taskly</h2>
             <p className="text-muted-foreground mb-4">
               Inicia sesion para gestionar tus tareas
@@ -184,13 +173,13 @@ export default function AppDashboard() {
   const overallProgress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="container mx-auto max-w-lg px-4 py-6">
+    <div className="container mx-auto px-4 py-6 max-w-lg lg:max-w-6xl">
       {/* Header */}
       <header className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Avatar className="size-12 border-2 border-primary/20">
             <AvatarFallback className="bg-primary/10">
-              {user.display_name?.[0]?.toUpperCase() || <User className="size-6 text-primary" />}
+              {user.display_name?.[0]?.toUpperCase() || <DuotoneIcon name={DuotoneIconNames.user} size={24} className="text-primary" />}
             </AvatarFallback>
           </Avatar>
           <div>
@@ -200,136 +189,182 @@ export default function AppDashboard() {
             </p>
           </div>
         </div>
-        <Button size="icon" className="rounded-full" onClick={() => setAddDialogOpen(true)}>
-          <Plus className="size-5" />
+        <Button size="icon" className="rounded-full bg-black dark:bg-white hover:bg-black/90 dark:hover:bg-white/90" onClick={() => setAddDialogOpen(true)}>
+          <DuotoneIcon name={DuotoneIconNames.plus} size={20} strokeColor="var(--primary)" className="text-primary" />
         </Button>
       </header>
 
-      {/* Progress Card */}
-      <Card className="mb-6 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Target className="size-5 text-primary" />
-            Progreso de hoy
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-6">
-            <div className="relative size-24 flex-shrink-0">
-              <svg className="size-full -rotate-90" viewBox="0 0 100 100">
-                <circle
-                  cx="50" cy="50" r="40"
-                  fill="none" stroke="currentColor" strokeWidth="8"
-                  className="text-primary/20"
-                />
-                <circle
-                  cx="50" cy="50" r="40"
-                  fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round"
-                  className="text-primary transition-all duration-500"
-                  strokeDasharray={`${overallProgress * 2.51} 251`}
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold text-foreground">{overallProgress}%</span>
-              </div>
-            </div>
-
-            <div className="flex-1 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Metas</span>
-                <span className="font-semibold text-foreground">
-                  {completedGoals}/{totalGoals}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Tareas</span>
-                <span className="font-semibold text-foreground">
-                  {completedCount}/{totalCount}
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Task List */}
-      {tasksLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="size-8 animate-spin text-primary" />
-        </div>
-      ) : tasks.length === 0 ? (
-        <EmptyState onAddTask={() => setAddDialogOpen(true)} />
-      ) : (
-        <div className="space-y-6">
-          {/* Pending Tasks */}
-          {pendingTasks.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Pendientes
-                </h2>
-                <Badge variant="secondary">{pendingTasks.length}</Badge>
-              </div>
-              {pendingTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onToggle={() => toggleComplete(task.id)}
-                  onDelete={() => handleDeleteTask(task.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Completed Tasks */}
-          {completedTasks.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-medium text-muted-foreground">
-                  Completadas
-                </h2>
-                <Badge variant="outline" className="text-muted-foreground">
-                  {completedTasks.length}
-                </Badge>
-              </div>
-              {completedTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onToggle={() => toggleComplete(task.id)}
-                  onDelete={() => handleDeleteTask(task.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* All completed message */}
-          {pendingTasks.length === 0 && completedTasks.length > 0 && (
-            <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20">
-              <CardContent className="py-6 text-center">
-                <div className="size-12 mx-auto mb-3 rounded-full bg-green-500/20 flex items-center justify-center">
-                  <CheckCircle2 className="size-6 text-green-600" />
+      {/* Main Grid - Responsive Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Progress & Stats */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Progress Card */}
+          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <DuotoneIcon name={DuotoneIconNames.target} size={20} className="text-primary" />
+                Progreso de hoy
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-6">
+                <div className="relative size-24 flex-shrink-0">
+                  <svg className="size-full -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50" cy="50" r="40"
+                      fill="none" stroke="currentColor" strokeWidth="8"
+                      className="text-primary/20"
+                    />
+                    <circle
+                      cx="50" cy="50" r="40"
+                      fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round"
+                      className="text-primary transition-all duration-500"
+                      strokeDasharray={`${overallProgress * 2.51} 251`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-2xl font-bold text-foreground">{overallProgress}%</span>
+                  </div>
                 </div>
-                <h3 className="font-semibold text-green-700 dark:text-green-400">
-                  Excelente trabajo!
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Completaste todas tus tareas de hoy
-                </p>
-              </CardContent>
-            </Card>
+
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Metas</span>
+                    <span className="font-semibold text-foreground">
+                      {completedGoals}/{totalGoals}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Tareas</span>
+                    <span className="font-semibold text-foreground">
+                      {completedCount}/{totalCount}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Stats - Desktop Only */}
+          <Card className="hidden lg:block">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <DuotoneIcon name={DuotoneIconNames.chart} size={18} className="text-primary" />
+                Estadisticas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between py-2 border-b">
+                <div className="flex items-center gap-2">
+                  <DuotoneIcon name={DuotoneIconNames.flame} size={16} strokeColor="#f97316" accentColor="#f97316" />
+                  <span className="text-sm">Racha actual</span>
+                </div>
+                <span className="font-bold">7 dias</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b">
+                <div className="flex items-center gap-2">
+                  <DuotoneIcon name={DuotoneIconNames.check} size={16} className="text-green-500" />
+                  <span className="text-sm">Completadas esta semana</span>
+                </div>
+                <span className="font-bold">{completedCount}</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2">
+                  <DuotoneIcon name={DuotoneIconNames.trophy} size={16} strokeColor="#eab308" accentColor="#eab308" />
+                  <span className="text-sm">Mejor racha</span>
+                </div>
+                <span className="font-bold">14 dias</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Tasks */}
+        <div className="lg:col-span-2">
+          {/* Task List */}
+          {tasksLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="size-8 animate-spin text-primary" />
+            </div>
+          ) : tasks.length === 0 ? (
+            <EmptyState onAddTask={() => setAddDialogOpen(true)} />
+          ) : (
+            <div className="space-y-6">
+              {/* Pending Tasks */}
+              {pendingTasks.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-foreground">
+                      Pendientes
+                    </h2>
+                    <Badge variant="secondary">{pendingTasks.length}</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {pendingTasks.map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        onToggle={() => toggleComplete(task.id)}
+                        onDelete={() => handleDeleteTask(task.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Completed Tasks */}
+              {completedTasks.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-medium text-muted-foreground">
+                      Completadas
+                    </h2>
+                    <Badge variant="outline" className="text-muted-foreground">
+                      {completedTasks.length}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {completedTasks.map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        onToggle={() => toggleComplete(task.id)}
+                        onDelete={() => handleDeleteTask(task.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All completed message */}
+              {pendingTasks.length === 0 && completedTasks.length > 0 && (
+                <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 border-green-500/20">
+                  <CardContent className="py-6 text-center">
+                    <div className="size-12 mx-auto mb-3 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <DuotoneIcon name={DuotoneIconNames.check} size={24} strokeColor="#16a34a" />
+                    </div>
+                    <h3 className="font-semibold text-green-700 dark:text-green-400">
+                      Excelente trabajo!
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Completaste todas tus tareas de hoy
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Floating Add Button (when tasks exist) */}
       {tasks.length > 0 && (
         <Button
           size="lg"
-          className="fixed bottom-24 right-4 rounded-full size-14 shadow-lg"
+          className="fixed bottom-24 right-4 rounded-full size-14 shadow-lg bg-black dark:bg-white hover:bg-black/90 dark:hover:bg-white/90"
           onClick={() => setAddDialogOpen(true)}
         >
-          <Plus className="size-6" />
+          <DuotoneIcon name={DuotoneIconNames.plus} size={24} strokeColor="var(--primary)" className="text-primary" />
         </Button>
       )}
 
@@ -423,14 +458,14 @@ function EmptyState({ onAddTask }: { onAddTask: () => void }) {
           <div className="relative mx-auto mb-6 size-32">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full" />
             <div className="absolute inset-4 bg-gradient-to-br from-primary/30 to-primary/10 rounded-full flex items-center justify-center">
-              <Sparkles className="size-12 text-primary" />
+              <DuotoneIcon name={DuotoneIconNames.sparkle} size={48} className="text-primary" />
             </div>
             {/* Decorative elements */}
             <div className="absolute -top-1 -right-1 size-6 bg-orange-400 rounded-full flex items-center justify-center">
-              <Calendar className="size-3 text-white" />
+              <DuotoneIcon name={DuotoneIconNames.calendar} size={12} strokeColor="white" />
             </div>
             <div className="absolute -bottom-1 -left-1 size-5 bg-green-400 rounded-full flex items-center justify-center">
-              <CheckCircle2 className="size-3 text-white" />
+              <DuotoneIcon name={DuotoneIconNames.check} size={12} strokeColor="white" />
             </div>
           </div>
 
@@ -443,8 +478,8 @@ function EmptyState({ onAddTask }: { onAddTask: () => void }) {
           </p>
 
           {/* CTA Button */}
-          <Button size="lg" onClick={onAddTask} className="gap-2">
-            <Plus className="size-5" />
+          <Button size="lg" onClick={onAddTask} className="gap-2 bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90">
+            <DuotoneIcon name={DuotoneIconNames.plus} size={20} strokeColor="var(--primary)" />
             Agregar primera tarea
           </Button>
 
@@ -467,6 +502,15 @@ function EmptyState({ onAddTask }: { onAddTask: () => void }) {
     </Card>
   );
 }
+
+// Category color map for dynamic styling
+const categoryColorMap: Record<string, string> = {
+  study: "#8b5cf6",
+  fitness: "#f97316",
+  mindfulness: "#06b6d4",
+  work: "#3b82f6",
+  personal: "#6b7280",
+};
 
 // Task card component
 function TaskCard({
@@ -492,7 +536,7 @@ function TaskCard({
   const isCompleted = task.completion?.status === "completed";
   const categoryKey = (task.color || "personal") as keyof typeof categoryConfig;
   const category = categoryConfig[categoryKey] || categoryConfig.personal;
-  const CategoryIcon = category.icon;
+  const categoryHexColor = categoryColorMap[categoryKey] || categoryColorMap.personal;
   const goalProgress =
     task.has_progress && task.completion?.progress_value && task.progress_target
       ? Math.round((task.completion.progress_value / task.progress_target) * 100)
@@ -535,22 +579,26 @@ function TaskCard({
           </div>
 
           <div
-            className={`size-10 rounded-full flex items-center justify-center ${category.color}/10`}
+            className={`size-10 rounded-full flex items-center justify-center`}
+            style={{ backgroundColor: `${categoryHexColor}15` }}
           >
-            <CategoryIcon
-              className={`size-5 ${category.color.replace("bg-", "text-")}`}
+            <DuotoneIcon
+              name={category.icon}
+              size={20}
+              strokeColor={categoryHexColor}
+              accentColor={categoryHexColor}
             />
           </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="size-8">
-                <MoreVertical className="size-4" />
+                <DuotoneIcon name={DuotoneIconNames.sliders} size={16} className="text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onDelete}>
-                <Trash2 className="size-4 mr-2 text-red-500" />
+                <DuotoneIcon name={DuotoneIconNames.trash} size={16} strokeColor="#ef4444" accentColor="#ef4444" className="mr-2" />
                 <span className="text-red-500">Eliminar</span>
               </DropdownMenuItem>
             </DropdownMenuContent>

@@ -20,25 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Rocket,
-  Plus,
-  Link2,
-  Trophy,
-  Target,
-  Flame,
-  Star,
-  Loader2,
-  Copy,
-  Users,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { DuotoneIcon, DuotoneIconNames } from "@/components/ui/duotone-icon";
 import { useAuth } from "@/lib/hooks/use-auth";
 import * as dataService from "@/lib/supabase/data-service";
 
 const CHALLENGE_TYPES = [
-  { value: "completion", label: "Completar tareas", icon: Target },
-  { value: "streak", label: "Mantener racha", icon: Flame },
-  { value: "perfect_day", label: "Dias perfectos", icon: Star },
+  { value: "completion", label: "Completar tareas", icon: DuotoneIconNames.target },
+  { value: "streak", label: "Mantener racha", icon: DuotoneIconNames.flame },
+  { value: "perfect_day", label: "Dias perfectos", icon: DuotoneIconNames.sparkle },
 ];
 
 const EMOJIS = ["🏆", "🎯", "🔥", "⭐", "💪", "🚀", "🎖️", "👑", "💎", "🌟"];
@@ -153,17 +143,21 @@ export default function ChallengesPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-lg px-4 py-6">
+    <div className="container mx-auto px-4 py-6 max-w-lg lg:max-w-4xl">
       <header className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Retos</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setJoinDialogOpen(true)}>
-            <Link2 className="size-4 mr-1" />
+            <DuotoneIcon name={DuotoneIconNames.link} size={16} className="mr-1" />
             Codigo
           </Button>
-          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="size-4 mr-1" />
-            Crear
+          <Button
+            size="sm"
+            onClick={() => setCreateDialogOpen(true)}
+            className="bg-black dark:bg-white hover:bg-black/90 dark:hover:bg-white/90"
+          >
+            <DuotoneIcon name={DuotoneIconNames.plus} size={16} strokeColor="var(--primary)" className="mr-1" />
+            <span className="text-white dark:text-black">Crear</span>
           </Button>
         </div>
       </header>
@@ -173,17 +167,17 @@ export default function ChallengesPage() {
         <CardContent className="py-4">
           <div className="flex justify-around text-center">
             <div>
-              <Rocket className="size-5 mx-auto text-primary mb-1" />
+              <DuotoneIcon name={DuotoneIconNames.rocket} size={20} className="mx-auto text-primary mb-1" />
               <p className="text-xl font-bold">{(stats.active_challenges as number) || 0}</p>
               <p className="text-xs text-muted-foreground">Activos</p>
             </div>
             <div>
-              <Trophy className="size-5 mx-auto text-primary mb-1" />
+              <DuotoneIcon name={DuotoneIconNames.award} size={20} className="mx-auto text-primary mb-1" />
               <p className="text-xl font-bold">{(stats.challenges_won as number) || 0}</p>
               <p className="text-xs text-muted-foreground">Ganados</p>
             </div>
             <div>
-              <Star className="size-5 mx-auto text-primary mb-1" />
+              <DuotoneIcon name={DuotoneIconNames.sparkle} size={20} className="mx-auto text-primary mb-1" />
               <p className="text-xl font-bold">{(stats.total_points as number) || 0}</p>
               <p className="text-xs text-muted-foreground">Puntos</p>
             </div>
@@ -201,13 +195,13 @@ export default function ChallengesPage() {
           {myChallenges.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <Rocket className="size-12 mx-auto text-muted-foreground mb-4" />
+                <DuotoneIcon name={DuotoneIconNames.rocket} size={48} className="mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No tienes retos activos</h3>
                 <p className="text-muted-foreground mb-4">
                   Crea uno o unete a un reto existente
                 </p>
-                <Button onClick={() => setCreateDialogOpen(true)}>
-                  <Plus className="size-4 mr-2" />
+                <Button onClick={() => setCreateDialogOpen(true)} className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90">
+                  <DuotoneIcon name={DuotoneIconNames.plus} size={16} strokeColor="var(--primary)" className="mr-2" />
                   Crear reto
                 </Button>
               </CardContent>
@@ -254,7 +248,7 @@ export default function ChallengesPage() {
             <CardContent className="py-4">
               <div className="flex items-center gap-3">
                 <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Link2 className="size-5 text-primary" />
+                  <DuotoneIcon name={DuotoneIconNames.link} size={20} className="text-primary" />
                 </div>
                 <div className="flex-1">
                   <p className="font-medium">Unirse con codigo</p>
@@ -282,7 +276,7 @@ export default function ChallengesPage() {
                     <div className="flex-1">
                       <h3 className="font-semibold">{String(challenge.title)}</h3>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="size-3" />
+                        <DuotoneIcon name={DuotoneIconNames.users} size={12} />
                         <span>Publico</span>
                       </div>
                     </div>
@@ -337,7 +331,10 @@ export default function ChallengesPage() {
               <SelectContent>
                 {CHALLENGE_TYPES.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
-                    {type.label}
+                    <div className="flex items-center gap-2">
+                      <DuotoneIcon name={type.icon} size={16} />
+                      {type.label}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -476,7 +473,7 @@ function ChallengeDetailContent({
               size="icon"
               onClick={() => navigator.clipboard.writeText(inviteCode)}
             >
-              <Copy className="size-4" />
+              <DuotoneIcon name={DuotoneIconNames.link} size={16} />
             </Button>
           </div>
         )}

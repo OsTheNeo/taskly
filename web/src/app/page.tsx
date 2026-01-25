@@ -51,10 +51,14 @@ export default function Home() {
           </div>
           {/* Auth Buttons */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Iniciar sesion
-            </Button>
-            <Button size="sm">Registrarse</Button>
+            <a href="/auth/login">
+              <Button variant="ghost" size="sm">
+                Iniciar sesion
+              </Button>
+            </a>
+            <a href="/auth/register">
+              <Button size="sm">Registrarse</Button>
+            </a>
           </div>
         </div>
       </header>
@@ -78,13 +82,17 @@ export default function Home() {
                 potente y siempre contigo.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button size="lg">
-                  Comenzar gratis
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="lg">
-                  Ver caracteristicas
-                </Button>
+                <a href="/auth/register">
+                  <Button size="lg">
+                    Comenzar gratis
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </a>
+                <a href="#caracteristicas">
+                  <Button variant="outline" size="lg">
+                    Ver caracteristicas
+                  </Button>
+                </a>
               </div>
             </div>
             {/* Preview Cards */}
@@ -281,14 +289,16 @@ export default function Home() {
                 Unete a miles de usuarios que ya han transformado su forma de
                 trabajar con Taskly. Es gratis para siempre.
               </p>
-              <Button
-                size="lg"
-                variant="secondary"
-                className="bg-background text-foreground hover:bg-background/90"
-              >
-                Comenzar gratis
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+              <a href="/auth/register">
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="bg-background text-foreground hover:bg-background/90"
+                >
+                  Comenzar gratis
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </a>
             </div>
           </div>
         </section>

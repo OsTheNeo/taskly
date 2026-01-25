@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
+import 'duotone_icon.dart';
 
 class AppBottomSheet extends StatelessWidget {
   final Widget child;
@@ -86,9 +87,12 @@ class AppBottomSheet extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: DuotoneIcon(
+                        DuotoneIcon.x,
+                        size: 20,
+                        color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                      ),
                       onPressed: () => Navigator.pop(context),
-                      iconSize: 20,
                     ),
                   ],
                 ),

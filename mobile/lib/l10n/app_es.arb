@@ -48,6 +48,7 @@
     }
   },
   "noReminder": "Sin recordatorio",
+  "tapToSetTime": "Toca para configurar hora",
   "saveTask": "Guardar tarea",
   "enterTitle": "Por favor ingresa un titulo",
   "notificationDisabled": "Notificacion desactivada",
@@ -91,7 +92,7 @@
   "notifications": "Notificaciones",
   "darkTheme": "Tema oscuro",
   "language": "Idioma",
-  "spanish": "Espanol",
+  "spanish": "Español",
   "english": "English",
   "help": "Ayuda",
   "about": "Acerca de",

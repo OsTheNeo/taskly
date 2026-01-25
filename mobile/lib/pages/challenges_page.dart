@@ -2,11 +2,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:radix_icons/radix_icons.dart';
 import '../models/challenge.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
 import '../services/injection.dart';
+import '../state/settings_state.dart' as settings;
 import '../widgets/ui/ui.dart';
 
 class ChallengesPage extends StatefulWidget {
@@ -32,6 +32,11 @@ class _ChallengesPageState extends State<ChallengesPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
     _loadData();
   }
 
@@ -65,6 +70,74 @@ class _ChallengesPageState extends State<ChallengesPage>
     }
   }
 
+  Widget _buildFolderTab({
+    required int index,
+    required String icon,
+    required String label,
+    required bool isDark,
+  }) {
+    final isSelected = _tabController.index == index;
+    final accentColor = settings.accentColor;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          _tabController.animateTo(index);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? Colors.white : Colors.black)
+                : (isDark ? AppColors.secondaryDark : AppColors.secondary),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
+            ),
+            border: isSelected
+                ? null
+                : Border.all(
+                    color: isDark ? AppColors.borderDark : AppColors.border,
+                    width: 1,
+                  ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              DuotoneIcon(
+                icon,
+                size: 16,
+                strokeColor: isSelected
+                    ? (isDark ? Colors.black : Colors.white)
+                    : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
+                fillColor: isSelected
+                    ? (isDark ? Colors.black : Colors.white)
+                    : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
+                accentColor: accentColor,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected
+                        ? (isDark ? Colors.black : Colors.white)
+                        : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -75,31 +148,56 @@ class _ChallengesPageState extends State<ChallengesPage>
         backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
         elevation: 0,
         title: Text(
-          'Retos',
+          'RETOS',
           style: TextStyle(
             color: isDark ? AppColors.foregroundDark : AppColors.foreground,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              RadixIcons.Plus,
-              color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+          GestureDetector(
+            onTap: _showCreateChallengeSheet,
+            child: Container(
+              width: 40,
+              height: 40,
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white : Colors.black,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: DuotoneIcon(
+                DuotoneIcon.plus,
+                size: 14,
+                strokeColor: isDark ? Colors.black : Colors.white,
+                fillColor: isDark ? Colors.black : Colors.white,
+                accentColor: settings.accentColor,
+              ),
             ),
-            onPressed: _showCreateChallengeSheet,
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor:
-              isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
-          indicatorColor: AppColors.primary,
-          tabs: [
-            Tab(text: 'Mis retos (${_myChallenges.length})'),
-            Tab(text: 'Descubrir'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(50),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                _buildFolderTab(
+                  index: 0,
+                  icon: DuotoneIcon.rocket,
+                  label: 'Mis retos (${_myChallenges.length})',
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildFolderTab(
+                  index: 1,
+                  icon: DuotoneIcon.search,
+                  label: 'Descubrir',
+                  isDark: isDark,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
       body: _isLoading
@@ -120,10 +218,10 @@ class _ChallengesPageState extends State<ChallengesPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              RadixIcons.Rocket,
+            DuotoneIcon(
+              DuotoneIcon.rocket,
               size: 64,
-              color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+              accentColor: settings.accentColor,
             ),
             const SizedBox(height: 16),
             Text(
@@ -145,7 +243,7 @@ class _ChallengesPageState extends State<ChallengesPage>
             AppButton(
               onPressed: _showCreateChallengeSheet,
               label: 'Crear reto',
-              icon: RadixIcons.Plus,
+              iconName: DuotoneIcon.plus,
             ),
           ],
         ),
@@ -200,25 +298,25 @@ class _ChallengesPageState extends State<ChallengesPage>
           _buildStatItem(
             '${_stats['active_challenges'] ?? 0}',
             'Activos',
-            RadixIcons.Rocket,
+            DuotoneIcon.rocket,
             isDark,
           ),
           _buildStatItem(
             '${_stats['challenges_won'] ?? 0}',
             'Ganados',
-            RadixIcons.Rocket,
+            DuotoneIcon.award,
             isDark,
           ),
           _buildStatItem(
             '${_stats['total_points'] ?? 0}',
             'Puntos',
-            RadixIcons.Star,
+            DuotoneIcon.star,
             isDark,
           ),
           _buildStatItem(
             '#${_stats['average_rank'] ?? '-'}',
             'Ranking',
-            RadixIcons.Bar_Chart,
+            DuotoneIcon.chart,
             isDark,
           ),
         ],
@@ -226,11 +324,11 @@ class _ChallengesPageState extends State<ChallengesPage>
     );
   }
 
-  Widget _buildStatItem(String value, String label, IconData icon, bool isDark) {
+  Widget _buildStatItem(String value, String label, String iconName, bool isDark) {
     return Column(
       children: [
-        Icon(
-          icon,
+        DuotoneIcon(
+          iconName,
           color: AppColors.primary,
           size: 20,
         ),
@@ -272,8 +370,9 @@ class _ChallengesPageState extends State<ChallengesPage>
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    RadixIcons.Link_2,
+                  child: DuotoneIcon(
+                    DuotoneIcon.link,
+                    size: 20,
                     color: AppColors.primary,
                   ),
                 ),
@@ -306,6 +405,7 @@ class _ChallengesPageState extends State<ChallengesPage>
                   label: 'Unirse',
                   variant: AppButtonVariant.outline,
                   size: AppButtonSize.sm,
+                  iconName: DuotoneIcon.userPlus,
                 ),
               ],
             ),
@@ -318,12 +418,10 @@ class _ChallengesPageState extends State<ChallengesPage>
                 padding: const EdgeInsets.all(32),
                 child: Column(
                   children: [
-                    Icon(
-                      RadixIcons.Magnifying_Glass,
+                    DuotoneIcon(
+                      DuotoneIcon.search,
                       size: 48,
-                      color: isDark
-                          ? AppColors.mutedForegroundDark
-                          : AppColors.mutedForeground,
+                      accentColor: settings.accentColor,
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -374,7 +472,15 @@ class _ChallengesPageState extends State<ChallengesPage>
 
     if (result != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Te has unido al reto')),
+        SnackBar(
+          content: const Text('Te has unido al reto'),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom + 80,
+            left: 16,
+            right: 16,
+          ),
+        ),
       );
       _loadData();
     }
@@ -408,18 +514,35 @@ class _ChallengesPageState extends State<ChallengesPage>
                 Navigator.pop(context);
                 if (result != null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Te has unido al reto')),
+                    SnackBar(
+                      content: const Text('Te has unido al reto'),
+                      behavior: SnackBarBehavior.floating,
+                      margin: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).padding.bottom + 80,
+                        left: 16,
+                        right: 16,
+                      ),
+                    ),
                   );
                   _loadData();
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Codigo no valido')),
+                    SnackBar(
+                      content: const Text('Codigo no valido'),
+                      behavior: SnackBarBehavior.floating,
+                      margin: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).padding.bottom + 80,
+                        left: 16,
+                        right: 16,
+                      ),
+                    ),
                   );
                 }
               }
             },
             label: 'Unirse',
             fullWidth: true,
+            iconName: DuotoneIcon.userPlus,
           ),
         ],
       ),
@@ -469,13 +592,20 @@ class _ChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final emoji = challenge['emoji'] as String? ?? '🏆';
+    final emoji = challenge['emoji'] as String? ?? DuotoneIcon.award;
     final title = challenge['title'] as String? ?? 'Reto';
     final status = challenge['status'] as String? ?? 'active';
     final targetValue = challenge['target_value'] as int? ?? 0;
     final endDate = DateTime.tryParse(challenge['end_date'] as String? ?? '');
-    final participation = (challenge['my_participation'] as List?)?.firstOrNull
-        as Map<String, dynamic>?;
+
+    // Handle my_participation as either List or Map
+    Map<String, dynamic>? participation;
+    final rawParticipation = challenge['my_participation'];
+    if (rawParticipation is List && rawParticipation.isNotEmpty) {
+      participation = rawParticipation.first as Map<String, dynamic>?;
+    } else if (rawParticipation is Map<String, dynamic>) {
+      participation = rawParticipation;
+    }
     final currentScore = participation?['current_score'] as int? ?? 0;
 
     final progress = targetValue > 0 ? (currentScore / targetValue).clamp(0.0, 1.0) : 0.0;
@@ -489,7 +619,21 @@ class _ChallengeCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(emoji, style: const TextStyle(fontSize: 32)),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: settings.accentColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: DuotoneIcon(
+                      emoji,
+                      size: 28,
+                      accentColor: settings.accentColor,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -572,7 +716,7 @@ class _DiscoverChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final emoji = challenge['emoji'] as String? ?? '🏆';
+    final emoji = challenge['emoji'] as String? ?? DuotoneIcon.award;
     final title = challenge['title'] as String? ?? 'Reto';
     final description = challenge['description'] as String?;
     final participants = (challenge['participants'] as List?)?.firstOrNull
@@ -585,7 +729,21 @@ class _DiscoverChallengeCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 40)),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: settings.accentColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: DuotoneIcon(
+                emoji,
+                size: 28,
+                accentColor: settings.accentColor,
+              ),
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -616,8 +774,8 @@ class _DiscoverChallengeCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(
-                      RadixIcons.Person,
+                    DuotoneIcon(
+                      DuotoneIcon.user,
                       size: 12,
                       color: isDark
                           ? AppColors.mutedForegroundDark
@@ -653,6 +811,7 @@ class _DiscoverChallengeCard extends StatelessWidget {
             onPressed: onJoin,
             label: 'Unirse',
             size: AppButtonSize.sm,
+            iconName: DuotoneIcon.userPlus,
           ),
         ],
       ),
@@ -681,26 +840,26 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  String _selectedEmoji = '🏆';
+  String _selectedIcon = DuotoneIcon.award;
   ChallengeType _selectedType = ChallengeType.completion;
   int _targetValue = 10;
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 7));
   bool _isCreating = false;
 
-  final List<String> _emojis = [
-    '🏆',
-    '🎯',
-    '🔥',
-    '⭐',
-    '💪',
-    '🚀',
-    '🎖️',
-    '👑',
-    '💎',
-    '🌟',
-    '⚡',
-    '🏅',
+  final List<String> _icons = [
+    DuotoneIcon.award,
+    DuotoneIcon.target,
+    DuotoneIcon.flame,
+    DuotoneIcon.star,
+    DuotoneIcon.rocket,
+    DuotoneIcon.bolt,
+    DuotoneIcon.heart,
+    DuotoneIcon.sparkle,
+    DuotoneIcon.timer,
+    DuotoneIcon.chart,
+    DuotoneIcon.check,
+    DuotoneIcon.users,
   ];
 
   @override
@@ -762,26 +921,31 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
               height: 50,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: _emojis.length,
+                itemCount: _icons.length,
                 itemBuilder: (context, index) {
-                  final emoji = _emojis[index];
-                  final isSelected = emoji == _selectedEmoji;
+                  final icon = _icons[index];
+                  final isSelected = icon == _selectedIcon;
+                  final accentColor = settings.accentColor;
                   return GestureDetector(
-                    onTap: () => setState(() => _selectedEmoji = emoji),
+                    onTap: () => setState(() => _selectedIcon = icon),
                     child: Container(
                       width: 50,
                       margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppColors.primary.withValues(alpha: 0.1)
+                            ? accentColor.withValues(alpha: 0.15)
                             : (isDark ? AppColors.mutedDark : AppColors.muted),
                         borderRadius: BorderRadius.circular(12),
                         border: isSelected
-                            ? Border.all(color: AppColors.primary, width: 2)
+                            ? Border.all(color: accentColor, width: 2)
                             : null,
                       ),
                       child: Center(
-                        child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                        child: DuotoneIcon(
+                          icon,
+                          size: 24,
+                          accentColor: isSelected ? accentColor : null,
+                        ),
                       ),
                     ),
                   );
@@ -879,7 +1043,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                                 setState(() => _targetValue--);
                               }
                             },
-                            icon: Icon(RadixIcons.Minus),
+                            icon: DuotoneIcon(DuotoneIcon.minus, size: 20),
                           ),
                           Container(
                             width: 60,
@@ -905,7 +1069,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
                           ),
                           IconButton(
                             onPressed: () => setState(() => _targetValue++),
-                            icon: Icon(RadixIcons.Plus),
+                            icon: DuotoneIcon(DuotoneIcon.plus, size: 20),
                           ),
                         ],
                       ),
@@ -946,7 +1110,7 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
               label: _isCreating ? 'Creando...' : 'Crear reto',
               fullWidth: true,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
           ],
         ),
       ),
@@ -991,8 +1155,8 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
             ),
             child: Row(
               children: [
-                Icon(
-                  RadixIcons.Calendar,
+                DuotoneIcon(
+                  DuotoneIcon.calendar,
                   size: 16,
                   color: isDark
                       ? AppColors.mutedForegroundDark
@@ -1031,7 +1195,15 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
   Future<void> _createChallenge() async {
     if (_titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ingresa un nombre para el reto')),
+        SnackBar(
+          content: const Text('Ingresa un nombre para el reto'),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom + 80,
+            left: 16,
+            right: 16,
+          ),
+        ),
       );
       return;
     }
@@ -1045,27 +1217,45 @@ class _CreateChallengeSheetState extends State<_CreateChallengeSheet> {
         description: _descriptionController.text.isEmpty
             ? null
             : _descriptionController.text,
-        emoji: _selectedEmoji,
+        emoji: _selectedIcon,
         challengeType: _selectedType.name == 'perfectDay'
             ? 'perfect_day'
             : _selectedType.name,
         targetValue: _targetValue,
         startDate: _startDate,
         endDate: _endDate,
+        visibility: 'public',
       );
 
       if (result != null && mounted) {
         Navigator.pop(context);
         widget.onCreated();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reto creado exitosamente')),
+          SnackBar(
+            content: const Text('Reto creado exitosamente'),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).padding.bottom + 80,
+              left: 16,
+              right: 16,
+            ),
+          ),
         );
       }
     } catch (e) {
       debugPrint('[CreateChallenge] Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al crear el reto')),
+          SnackBar(
+            content: const Text('Error al crear el reto'),
+            backgroundColor: AppColors.destructive,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).padding.bottom + 80,
+              left: 16,
+              right: 16,
+            ),
+          ),
         );
       }
     } finally {
@@ -1098,6 +1288,7 @@ class _ChallengeDetailPageState extends State<_ChallengeDetailPage> {
 
   List<Map<String, dynamic>> _leaderboard = [];
   bool _isLoading = true;
+  bool _isUpdatingScore = false;
 
   @override
   void initState() {
@@ -1122,10 +1313,178 @@ class _ChallengeDetailPageState extends State<_ChallengeDetailPage> {
     }
   }
 
+  String _getProgressButtonText() {
+    final challengeType = widget.challenge['challenge_type'] as String? ?? 'completion';
+    switch (challengeType) {
+      case 'streak':
+        return 'Registrar dia';
+      case 'completion':
+        return 'Tarea completada';
+      case 'category':
+        return 'Tarea completada';
+      case 'speed':
+        return 'Registrar tiempo';
+      case 'perfect_day':
+        return 'Dia perfecto';
+      default:
+        return 'Registrar progreso';
+    }
+  }
+
+  String _getProgressDescription() {
+    final challengeType = widget.challenge['challenge_type'] as String? ?? 'completion';
+    final targetValue = widget.challenge['target_value'] as int? ?? 0;
+    switch (challengeType) {
+      case 'streak':
+        return 'Registra cada dia que completes al menos una tarea. Tu objetivo es mantener una racha de $targetValue dias consecutivos.';
+      case 'completion':
+        return 'Registra cada tarea que completes. Tu objetivo es completar $targetValue tareas en total.';
+      case 'category':
+        return 'Registra cada tarea de la categoria seleccionada. Tu objetivo es completar $targetValue tareas.';
+      case 'speed':
+        return 'Registra tareas completadas rapidamente. Tu objetivo es completar $targetValue tareas.';
+      case 'perfect_day':
+        return 'Registra cada dia que completes TODAS tus tareas. Tu objetivo es tener $targetValue dias perfectos.';
+      default:
+        return 'Registra tu progreso hacia el objetivo de $targetValue.';
+    }
+  }
+
+  void _showAddProgressDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final challengeType = widget.challenge['challenge_type'] as String? ?? 'completion';
+
+    AppBottomSheet.show(
+      context: context,
+      title: 'Registrar progreso',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: settings.accentColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: settings.accentColor.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                DuotoneIcon(
+                  DuotoneIcon.info,
+                  size: 20,
+                  accentColor: settings.accentColor,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _getProgressDescription(),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            _getProgressQuestion(challengeType),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  onPressed: () => Navigator.pop(context),
+                  label: 'Cancelar',
+                  variant: AppButtonVariant.outline,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AppButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _incrementScore();
+                  },
+                  label: 'Si, registrar',
+                  iconName: DuotoneIcon.check,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  String _getProgressQuestion(String challengeType) {
+    switch (challengeType) {
+      case 'streak':
+        return 'Completaste al menos una tarea hoy?';
+      case 'completion':
+        return 'Acabas de completar una tarea?';
+      case 'category':
+        return 'Completaste una tarea de esta categoria?';
+      case 'speed':
+        return 'Completaste una tarea rapidamente?';
+      case 'perfect_day':
+        return 'Completaste TODAS tus tareas de hoy?';
+      default:
+        return 'Quieres registrar un progreso?';
+    }
+  }
+
+  Future<void> _incrementScore() async {
+    if (_isUpdatingScore) return;
+
+    setState(() => _isUpdatingScore = true);
+
+    try {
+      await _dataService.updateChallengeScore(
+        visitorId: widget.currentUserId,
+        challengeId: widget.challenge['id'],
+        scoreIncrement: 1,
+      );
+
+      await _loadLeaderboard();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Progreso registrado'),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).padding.bottom + 80,
+              left: 16,
+              right: 16,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[ChallengeDetail] Error updating score: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdatingScore = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final emoji = widget.challenge['emoji'] as String? ?? '🏆';
+    final emoji = widget.challenge['emoji'] as String? ?? DuotoneIcon.award;
     final title = widget.challenge['title'] as String? ?? 'Reto';
     final description = widget.challenge['description'] as String?;
     final inviteCode = widget.challenge['invite_code'] as String?;
@@ -1135,12 +1494,28 @@ class _ChallengeDetailPageState extends State<_ChallengeDetailPage> {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isUpdatingScore ? null : _showAddProgressDialog,
+        backgroundColor: settings.accentColor,
+        icon: _isUpdatingScore
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          _getProgressButtonText(),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+      ),
       appBar: AppBar(
         backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            RadixIcons.Arrow_Left,
+          icon: DuotoneIcon(
+            DuotoneIcon.chevronLeft,
+            size: 22,
             color: isDark ? AppColors.foregroundDark : AppColors.foreground,
           ),
           onPressed: () => Navigator.pop(context),
@@ -1148,8 +1523,9 @@ class _ChallengeDetailPageState extends State<_ChallengeDetailPage> {
         actions: [
           if (inviteCode != null)
             IconButton(
-              icon: Icon(
-                RadixIcons.Share_1,
+              icon: DuotoneIcon(
+                DuotoneIcon.link,
+                size: 22,
                 color: isDark ? AppColors.foregroundDark : AppColors.foreground,
               ),
               onPressed: () => _shareChallenge(inviteCode),
@@ -1165,7 +1541,21 @@ class _ChallengeDetailPageState extends State<_ChallengeDetailPage> {
             Center(
               child: Column(
                 children: [
-                  Text(emoji, style: const TextStyle(fontSize: 64)),
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: settings.accentColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Center(
+                      child: DuotoneIcon(
+                        emoji,
+                        size: 48,
+                        accentColor: settings.accentColor,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     title,
@@ -1197,9 +1587,9 @@ class _ChallengeDetailPageState extends State<_ChallengeDetailPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildDetailStat('🎯', '$targetValue', 'Objetivo', isDark),
-                _buildDetailStat('📅', '$daysLeft', 'Dias', isDark),
-                _buildDetailStat('👥', '${_leaderboard.length}', 'Jugadores', isDark),
+                _buildDetailStat(DuotoneIcon.target, '$targetValue', 'Objetivo', isDark),
+                _buildDetailStat(DuotoneIcon.calendar, '$daysLeft', 'Dias', isDark),
+                _buildDetailStat(DuotoneIcon.users, '${_leaderboard.length}', 'Jugadores', isDark),
               ],
             ),
             const SizedBox(height: 24),
@@ -1240,11 +1630,19 @@ class _ChallengeDetailPageState extends State<_ChallengeDetailPage> {
                       ),
                     ),
                     IconButton(
-                      icon: Icon(RadixIcons.Copy),
+                      icon: DuotoneIcon(DuotoneIcon.clipboard, size: 20),
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: inviteCode));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Codigo copiado')),
+                          SnackBar(
+                            content: const Text('Codigo copiado'),
+                            behavior: SnackBarBehavior.floating,
+                            margin: EdgeInsets.only(
+                              bottom: MediaQuery.of(context).padding.bottom + 80,
+                              left: 16,
+                              right: 16,
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -1301,14 +1699,14 @@ class _ChallengeDetailPageState extends State<_ChallengeDetailPage> {
   }
 
   Widget _buildDetailStat(
-    String emoji,
+    String iconName,
     String value,
     String label,
     bool isDark,
   ) {
     return Column(
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 24)),
+        DuotoneIcon(iconName, size: 24, accentColor: settings.accentColor),
         const SizedBox(height: 4),
         Text(
           value,
@@ -1333,7 +1731,15 @@ class _ChallengeDetailPageState extends State<_ChallengeDetailPage> {
     final message = 'Unete a mi reto en Taskly! Usa el codigo: ${code.toUpperCase()}';
     Clipboard.setData(ClipboardData(text: message));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Mensaje copiado al portapapeles')),
+      SnackBar(
+        content: const Text('Mensaje copiado al portapapeles'),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 80,
+          left: 16,
+          right: 16,
+        ),
+      ),
     );
   }
 }
@@ -1463,8 +1869,8 @@ class _LeaderboardItem extends StatelessWidget {
                 color: AppColors.success.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                RadixIcons.Check,
+              child: DuotoneIcon(
+                DuotoneIcon.check,
                 color: AppColors.success,
                 size: 16,
               ),

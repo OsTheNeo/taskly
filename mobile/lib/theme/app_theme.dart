@@ -7,92 +7,126 @@ abstract class AppTheme {
     return color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
   }
 
-  static TextTheme _buildTextTheme(TextTheme base, bool isDark) {
+  static TextStyle Function({
+    TextStyle? textStyle,
+    Color? color,
+    Color? backgroundColor,
+    double? fontSize,
+    FontWeight? fontWeight,
+    FontStyle? fontStyle,
+    double? letterSpacing,
+    double? wordSpacing,
+    TextBaseline? textBaseline,
+    double? height,
+    Locale? locale,
+    Paint? foreground,
+    Paint? background,
+    List<Shadow>? shadows,
+    List<FontFeature>? fontFeatures,
+    TextDecoration? decoration,
+    Color? decorationColor,
+    TextDecorationStyle? decorationStyle,
+    double? decorationThickness,
+  }) _getFontMethod(String fontFamily) {
+    switch (fontFamily) {
+      case 'Open Sans':
+        return GoogleFonts.openSans;
+      case 'Roboto Slab':
+        return GoogleFonts.robotoSlab;
+      case 'Caveat':
+        return GoogleFonts.caveat;
+      default:
+        return GoogleFonts.inter;
+    }
+  }
+
+  static TextTheme _buildTextTheme(TextTheme base, bool isDark, String fontFamily) {
     final textColor = isDark ? AppColors.foregroundDark : AppColors.foreground;
     final mutedColor = isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground;
+    final font = _getFontMethod(fontFamily);
 
-    return GoogleFonts.interTextTheme(base).copyWith(
-      displayLarge: GoogleFonts.inter(
+    return base.copyWith(
+      displayLarge: font(
         fontSize: 57,
         fontWeight: FontWeight.w400,
         letterSpacing: -0.25,
         color: textColor,
       ),
-      displayMedium: GoogleFonts.inter(
+      displayMedium: font(
         fontSize: 45,
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
-      displaySmall: GoogleFonts.inter(
+      displaySmall: font(
         fontSize: 36,
         fontWeight: FontWeight.w400,
         color: textColor,
       ),
-      headlineLarge: GoogleFonts.inter(
+      headlineLarge: font(
         fontSize: 32,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.5,
         color: textColor,
       ),
-      headlineMedium: GoogleFonts.inter(
+      headlineMedium: font(
         fontSize: 28,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.5,
         color: textColor,
       ),
-      headlineSmall: GoogleFonts.inter(
+      headlineSmall: font(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: textColor,
       ),
-      titleLarge: GoogleFonts.inter(
+      titleLarge: font(
         fontSize: 22,
         fontWeight: FontWeight.w600,
         color: textColor,
       ),
-      titleMedium: GoogleFonts.inter(
+      titleMedium: font(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.15,
         color: textColor,
       ),
-      titleSmall: GoogleFonts.inter(
+      titleSmall: font(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.1,
         color: textColor,
       ),
-      bodyLarge: GoogleFonts.inter(
+      bodyLarge: font(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.15,
         color: textColor,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: font(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.25,
         color: textColor,
       ),
-      bodySmall: GoogleFonts.inter(
+      bodySmall: font(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.4,
         color: mutedColor,
       ),
-      labelLarge: GoogleFonts.inter(
+      labelLarge: font(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.1,
         color: textColor,
       ),
-      labelMedium: GoogleFonts.inter(
+      labelMedium: font(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
         color: textColor,
       ),
-      labelSmall: GoogleFonts.inter(
+      labelSmall: font(
         fontSize: 11,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
@@ -101,10 +135,11 @@ abstract class AppTheme {
     );
   }
 
-  static ThemeData lightTheme(Color accentColor) {
+  static ThemeData lightTheme(Color accentColor, {String fontFamily = 'System'}) {
     final bool isDefaultAccent = accentColor.toARGB32() == AppColors.primary.toARGB32();
     final Color primaryColor = isDefaultAccent ? AppColors.primary : accentColor;
     final Color onPrimaryColor = _getContrastColor(primaryColor);
+    final font = _getFontMethod(fontFamily);
 
     return ThemeData(
       useMaterial3: true,
@@ -121,14 +156,14 @@ abstract class AppTheme {
         onError: AppColors.destructiveForeground,
         outline: AppColors.border,
       ),
-      textTheme: _buildTextTheme(ThemeData.light().textTheme, false),
+      textTheme: _buildTextTheme(ThemeData.light().textTheme, false, fontFamily),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 0,
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.foreground,
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: font(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: AppColors.foreground,
@@ -216,18 +251,18 @@ abstract class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.background,
-        indicatorColor: AppColors.secondary,
+        indicatorColor: AppColors.foreground,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.inter(
+            return font(
               fontSize: 12,
               fontWeight: FontWeight.w500,
               color: AppColors.foreground,
             );
           }
-          return GoogleFonts.inter(
+          return font(
             fontSize: 12,
             fontWeight: FontWeight.w400,
             color: AppColors.mutedForeground,
@@ -235,7 +270,7 @@ abstract class AppTheme {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: AppColors.foreground, size: 24);
+            return const IconThemeData(color: AppColors.background, size: 24);
           }
           return const IconThemeData(color: AppColors.mutedForeground, size: 24);
         }),
@@ -256,7 +291,7 @@ abstract class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.foreground,
-        contentTextStyle: GoogleFonts.inter(
+        contentTextStyle: font(
           fontSize: 14,
           color: AppColors.background,
         ),
@@ -276,10 +311,11 @@ abstract class AppTheme {
     );
   }
 
-  static ThemeData darkTheme(Color accentColor) {
+  static ThemeData darkTheme(Color accentColor, {String fontFamily = 'System'}) {
     final bool isDefaultAccent = accentColor.toARGB32() == AppColors.primary.toARGB32();
     final Color primaryColor = isDefaultAccent ? AppColors.primaryDark : accentColor;
     final Color onPrimaryColor = _getContrastColor(primaryColor);
+    final font = _getFontMethod(fontFamily);
 
     return ThemeData(
       useMaterial3: true,
@@ -296,14 +332,14 @@ abstract class AppTheme {
         onError: AppColors.destructiveForeground,
         outline: AppColors.borderDark,
       ),
-      textTheme: _buildTextTheme(ThemeData.dark().textTheme, true),
+      textTheme: _buildTextTheme(ThemeData.dark().textTheme, true, fontFamily),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 0,
         backgroundColor: AppColors.backgroundDark,
         foregroundColor: AppColors.foregroundDark,
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: font(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: AppColors.foregroundDark,
@@ -391,18 +427,18 @@ abstract class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.backgroundDark,
-        indicatorColor: AppColors.secondaryDark,
+        indicatorColor: AppColors.foregroundDark,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.inter(
+            return font(
               fontSize: 12,
               fontWeight: FontWeight.w500,
               color: AppColors.foregroundDark,
             );
           }
-          return GoogleFonts.inter(
+          return font(
             fontSize: 12,
             fontWeight: FontWeight.w400,
             color: AppColors.mutedForegroundDark,
@@ -410,7 +446,7 @@ abstract class AppTheme {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: AppColors.foregroundDark, size: 24);
+            return const IconThemeData(color: AppColors.backgroundDark, size: 24);
           }
           return const IconThemeData(color: AppColors.mutedForegroundDark, size: 24);
         }),
@@ -431,7 +467,7 @@ abstract class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.foregroundDark,
-        contentTextStyle: GoogleFonts.inter(
+        contentTextStyle: font(
           fontSize: 14,
           color: AppColors.backgroundDark,
         ),

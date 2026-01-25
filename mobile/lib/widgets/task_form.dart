@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:radix_icons/radix_icons.dart';
 import '../services/notification_service.dart';
+import '../services/data_service.dart';
+import '../services/auth_service.dart';
+import '../services/injection.dart';
 import '../l10n/app_localizations.dart';
 import '../models/task_category.dart';
+import '../state/settings_state.dart' as settings;
 import 'ui/ui.dart';
 
 enum RecurrenceType { none, daily, weekly, biweekly, monthly, custom }
@@ -20,7 +23,8 @@ class TaskFormData {
   TimeOfDay? reminderTime;
   bool reminderEnabled;
   TaskCategory? category;
-  Color? customAccentColor;
+  String? groupId;
+  String? groupName;
 
   TaskFormData({
     this.title = '',
@@ -34,7 +38,8 @@ class TaskFormData {
     this.reminderTime,
     this.reminderEnabled = false,
     this.category,
-    this.customAccentColor,
+    this.groupId,
+    this.groupName,
   });
 }
 
@@ -56,6 +61,13 @@ class _TaskFormState extends State<TaskForm> {
   late TaskFormData _data;
   final _titleController = TextEditingController();
   final _targetController = TextEditingController();
+  bool _isFormValid = false;
+
+  List<Map<String, dynamic>> _groups = [];
+  bool _isLoadingGroups = false;
+
+  DataService get _dataService => getIt<DataService>();
+  AuthService get _authService => getIt<AuthService>();
 
   @override
   void initState() {
@@ -64,6 +76,31 @@ class _TaskFormState extends State<TaskForm> {
     _data.category ??= PredefinedCategories.defaultCategory;
     _titleController.text = _data.title;
     _targetController.text = _data.targetValue?.toString() ?? '';
+    _titleController.addListener(_validateForm);
+    _validateForm();
+    _loadGroups();
+  }
+
+  Future<void> _loadGroups() async {
+    final user = _authService.currentUser;
+    if (user == null) return;
+
+    setState(() => _isLoadingGroups = true);
+    try {
+      final groups = await _dataService.getHouseholds(user.uid);
+      setState(() {
+        _groups = groups;
+        _isLoadingGroups = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingGroups = false);
+    }
+  }
+
+  void _validateForm() {
+    setState(() {
+      _isFormValid = _titleController.text.trim().isNotEmpty;
+    });
   }
 
   @override
@@ -83,19 +120,23 @@ class _TaskFormState extends State<TaskForm> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Title
-          AppInput(
-            label: l10n.title,
-            placeholder: l10n.titlePlaceholder,
-            controller: _titleController,
-            onChanged: (v) => _data.title = v,
-          ),
-          const SizedBox(height: 20),
-
-          // Category
-          _buildSectionLabel('Categoria', isDark),
+          // Title + Category button
+          _buildSectionLabel(l10n.title, isDark),
           const SizedBox(height: 8),
-          _buildCategorySelector(isDark),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: AppInput(
+                  placeholder: l10n.titlePlaceholder,
+                  controller: _titleController,
+                  onChanged: (v) => _data.title = v,
+                ),
+              ),
+              const SizedBox(width: 12),
+              _buildCategoryButton(isDark),
+            ],
+          ),
           const SizedBox(height: 20),
 
           // Type: Personal or Group
@@ -105,7 +146,7 @@ class _TaskFormState extends State<TaskForm> {
             children: [
               Expanded(
                 child: _buildTypeChip(
-                  icon: RadixIcons.Person,
+                  iconName: DuotoneIcon.user,
                   label: l10n.personal,
                   isSelected: _data.isPersonal,
                   onTap: () => setState(() => _data.isPersonal = true),
@@ -115,7 +156,7 @@ class _TaskFormState extends State<TaskForm> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildTypeChip(
-                  icon: RadixIcons.Backpack,
+                  iconName: DuotoneIcon.users,
                   label: l10n.group,
                   isSelected: !_data.isPersonal,
                   onTap: () => setState(() => _data.isPersonal = false),
@@ -124,11 +165,17 @@ class _TaskFormState extends State<TaskForm> {
               ),
             ],
           ),
+
+          // Group selector (when group is selected)
+          if (!_data.isPersonal) ...[
+            const SizedBox(height: 16),
+            _buildGroupSelector(isDark),
+          ],
           const SizedBox(height: 20),
 
           // Is Goal with progress
           _buildToggleOption(
-            icon: RadixIcons.Target,
+            iconName: DuotoneIcon.target,
             title: l10n.goalWithProgress,
             subtitle: l10n.trackDailyProgress,
             value: _data.isGoal,
@@ -172,30 +219,31 @@ class _TaskFormState extends State<TaskForm> {
           ],
           const SizedBox(height: 20),
 
-          // Reminder
-          _buildToggleOption(
-            icon: RadixIcons.Bell,
-            title: l10n.reminder,
-            subtitle: _data.reminderTime != null
-                ? l10n.atTime(_formatTime(_data.reminderTime!))
-                : l10n.noReminder,
-            value: _data.reminderEnabled,
-            onChanged: (v) {
-              setState(() {
-                _data.reminderEnabled = v;
-                if (v && _data.reminderTime == null) {
+          // Reminder - tap anywhere to open time picker
+          GestureDetector(
+            onTap: _showTimePicker,
+            child: _buildToggleOption(
+              iconName: DuotoneIcon.bell,
+              title: l10n.reminder,
+              subtitle: _data.reminderTime != null
+                  ? l10n.atTime(_formatTime(_data.reminderTime!))
+                  : l10n.tapToSetTime,
+              value: _data.reminderEnabled,
+              onChanged: (v) {
+                if (v) {
                   _showTimePicker();
+                } else {
+                  setState(() {
+                    _data.reminderEnabled = false;
+                    _data.reminderTime = null;
+                  });
                 }
-              });
-            },
-            isDark: isDark,
-            trailing: _data.reminderEnabled
-                ? IconButton(
-                    icon: const Icon(RadixIcons.Clock, size: 18),
-                    onPressed: _showTimePicker,
-                    color: AppColors.primary,
-                  )
-                : null,
+              },
+              isDark: isDark,
+              trailing: _data.reminderEnabled
+                  ? DuotoneIcon(DuotoneIcon.clock, size: 18, accentColor: settings.accentColor)
+                  : null,
+            ),
           ),
           const SizedBox(height: 32),
 
@@ -203,8 +251,8 @@ class _TaskFormState extends State<TaskForm> {
           AppButton(
             label: l10n.saveTask,
             fullWidth: true,
-            icon: RadixIcons.Check,
-            onPressed: _onSave,
+            iconName: DuotoneIcon.check,
+            onPressed: _isFormValid ? _onSave : null,
           ),
           const SizedBox(height: 16),
         ],
@@ -223,125 +271,54 @@ class _TaskFormState extends State<TaskForm> {
     );
   }
 
-  Widget _buildCategorySelector(bool isDark) {
-    final categories = PredefinedCategories.all;
+  Widget _buildCategoryButton(bool isDark) {
     final selectedCategory = _data.category ?? PredefinedCategories.defaultCategory;
-    final accentColor = _data.customAccentColor ?? selectedCategory.accentColor;
+    final categoryColor = selectedCategory.accentColor;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Category chips in a wrap
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: categories.map((cat) {
-            final isSelected = selectedCategory.id == cat.id;
-            final displayColor = isSelected
-                ? (_data.customAccentColor ?? cat.accentColor)
-                : cat.accentColor;
-
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _data.category = cat;
-                  _data.customAccentColor = null; // Reset custom color when changing category
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? displayColor.withValues(alpha: 0.15)
-                      : (isDark ? AppColors.secondaryDark : AppColors.secondary),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected ? displayColor : Colors.transparent,
-                    width: 2,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      cat.icon,
-                      size: 16,
-                      color: isSelected
-                          ? displayColor
-                          : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      cat.name,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                        color: isSelected
-                            ? displayColor
-                            : (isDark ? AppColors.foregroundDark : AppColors.foreground),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+    return GestureDetector(
+      onTap: () => _showCategoryModal(isDark),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: categoryColor.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: categoryColor.withValues(alpha: 0.4),
+            width: 1.5,
+          ),
         ),
-        const SizedBox(height: 16),
-        // Color picker
-        Row(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            DuotoneIcon(
+              selectedCategory.iconName,
+              size: 20,
+              accentColor: categoryColor,
+            ),
+            const SizedBox(width: 8),
             Text(
-              'Color de acento',
+              selectedCategory.name,
               style: TextStyle(
-                fontSize: 13,
-                color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: categoryColor,
               ),
             ),
-            const Spacer(),
-            GestureDetector(
-              onTap: () => _showColorPicker(isDark),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.secondaryDark : AppColors.secondary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: accentColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isDark ? AppColors.borderDark : AppColors.border,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      RadixIcons.Chevron_Down,
-                      size: 14,
-                      color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
-                    ),
-                  ],
-                ),
-              ),
+            const SizedBox(width: 4),
+            DuotoneIcon(
+              DuotoneIcon.chevronDown,
+              size: 14,
+              color: categoryColor,
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 
-  void _showColorPicker(bool isDark) {
-    final colors = CategoryColors.accentColors;
-    final currentColor = _data.customAccentColor ?? _data.category?.accentColor ?? colors.first;
+  void _showCategoryModal(bool isDark) {
+    final categories = PredefinedCategories.all;
 
     showModalBottomSheet(
       context: context,
@@ -350,101 +327,304 @@ class _TaskFormState extends State<TaskForm> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Selecciona un color',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.foregroundDark : AppColors.foreground,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(RadixIcons.Cross_2),
-                        onPressed: () => Navigator.pop(context),
-                        color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
-                      ),
-                    ],
+                  Text(
+                    'Selecciona categoria',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: colors.map((color) {
-                      final isSelected = currentColor == color;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _data.customAccentColor = color;
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSelected
-                                  ? (isDark ? Colors.white : Colors.black)
-                                  : Colors.transparent,
-                              width: 3,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: color.withValues(alpha: 0.4),
-                                      blurRadius: 8,
-                                      spreadRadius: 2,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: isSelected
-                              ? Icon(
-                                  RadixIcons.Check,
-                                  color: _getContrastColor(color),
-                                  size: 20,
-                                )
-                              : null,
-                        ),
-                      );
-                    }).toList(),
+                  const Spacer(),
+                  IconButton(
+                    icon: DuotoneIcon(
+                      DuotoneIcon.x,
+                      size: 20,
+                      color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                    ),
+                    onPressed: () => Navigator.pop(context),
                   ),
-                  const SizedBox(height: 20),
                 ],
               ),
-            );
-          },
+              const SizedBox(height: 16),
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.85,
+                children: categories.map((cat) {
+                  final isSelected = _data.category?.id == cat.id;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _data.category = cat;
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: cat.accentColor.withValues(alpha: isSelected ? 0.2 : 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? cat.accentColor
+                              : cat.accentColor.withValues(alpha: 0.3),
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          DuotoneIcon(
+                            cat.iconName,
+                            size: 28,
+                            accentColor: cat.accentColor,
+                          ),
+                          const SizedBox(height: 6),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(
+                              cat.name,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         );
       },
     );
   }
 
-  Color _getContrastColor(Color color) {
-    final luminance = color.computeLuminance();
-    return luminance > 0.5 ? Colors.black : Colors.white;
+  Widget _buildGroupSelector(bool isDark) {
+    final accentColor = settings.accentColor;
+
+    if (_isLoadingGroups) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.secondaryDark : AppColors.secondary,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_groups.isEmpty)
+          GestureDetector(
+            onTap: () => _showCreateGroupDialog(isDark),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  DuotoneIcon(DuotoneIcon.plus, size: 20, accentColor: accentColor),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'No tienes grupos. Crea uno',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                      ),
+                    ),
+                  ),
+                  DuotoneIcon(DuotoneIcon.chevronRight, size: 16, accentColor: accentColor),
+                ],
+              ),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ..._groups.map((group) {
+                final isSelected = _data.groupId == group['id'];
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _data.groupId = group['id'];
+                      _data.groupName = group['name'];
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? accentColor.withValues(alpha: 0.15)
+                          : (isDark ? AppColors.secondaryDark : AppColors.secondary),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected ? accentColor : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DuotoneIcon(
+                          DuotoneIcon.users,
+                          size: 16,
+                          accentColor: isSelected ? accentColor : null,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          group['name'] ?? 'Grupo',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                            color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              // Create new group button
+              GestureDetector(
+                onTap: () => _showCreateGroupDialog(isDark),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.secondaryDark : AppColors.secondary,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDark ? AppColors.borderDark : AppColors.border,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DuotoneIcon(DuotoneIcon.plus, size: 16, accentColor: accentColor),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Nuevo',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  void _showCreateGroupDialog(bool isDark) {
+    final controller = TextEditingController();
+    final accentColor = settings.accentColor;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppColors.cardDark : AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Crear grupo',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppInput(
+                controller: controller,
+                label: 'Nombre del grupo',
+                placeholder: 'Ej: Familia, Trabajo...',
+              ),
+              const SizedBox(height: 20),
+              AppButton(
+                label: 'Crear grupo',
+                fullWidth: true,
+                iconName: DuotoneIcon.plus,
+                onPressed: () async {
+                  if (controller.text.trim().isEmpty) return;
+                  final user = _authService.currentUser;
+                  if (user == null) return;
+
+                  final result = await _dataService.createHousehold(
+                    visitorId: user.uid,
+                    name: controller.text.trim(),
+                  );
+
+                  if (result != null && mounted) {
+                    Navigator.pop(ctx);
+                    await _loadGroups();
+                    setState(() {
+                      _data.groupId = result['id'];
+                      _data.groupName = result['name'];
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildTypeChip({
-    required IconData icon,
+    required String iconName,
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
     required bool isDark,
   }) {
+    final accentColor = settings.accentColor;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -452,23 +632,21 @@ class _TaskFormState extends State<TaskForm> {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.1)
+              ? accentColor.withValues(alpha: 0.1)
               : (isDark ? AppColors.secondaryDark : AppColors.secondary),
           borderRadius: AppSpacing.borderRadiusMd,
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.transparent,
+            color: isSelected ? accentColor : Colors.transparent,
             width: 2,
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
+            DuotoneIcon(
+              iconName,
               size: 20,
-              color: isSelected
-                  ? AppColors.primary
-                  : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
+              accentColor: isSelected ? accentColor : null,
             ),
             const SizedBox(width: 8),
             Text(
@@ -477,7 +655,7 @@ class _TaskFormState extends State<TaskForm> {
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: isSelected
-                    ? AppColors.primary
+                    ? accentColor
                     : (isDark ? AppColors.foregroundDark : AppColors.foreground),
               ),
             ),
@@ -488,7 +666,7 @@ class _TaskFormState extends State<TaskForm> {
   }
 
   Widget _buildToggleOption({
-    required IconData icon,
+    required String iconName,
     required String title,
     required String subtitle,
     required bool value,
@@ -496,6 +674,8 @@ class _TaskFormState extends State<TaskForm> {
     required bool isDark,
     Widget? trailing,
   }) {
+    final accentColor = settings.accentColor;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -509,16 +689,16 @@ class _TaskFormState extends State<TaskForm> {
             height: 40,
             decoration: BoxDecoration(
               color: value
-                  ? AppColors.primary.withValues(alpha: 0.1)
+                  ? accentColor.withValues(alpha: 0.1)
                   : (isDark ? AppColors.mutedDark : AppColors.muted),
               borderRadius: AppSpacing.borderRadiusSm,
             ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: value
-                  ? AppColors.primary
-                  : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
+            child: Center(
+              child: DuotoneIcon(
+                iconName,
+                size: 20,
+                accentColor: value ? accentColor : null,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -548,8 +728,8 @@ class _TaskFormState extends State<TaskForm> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: AppColors.primary,
-            activeThumbColor: AppColors.primaryForeground,
+            activeTrackColor: accentColor,
+            activeThumbColor: Colors.white,
           ),
         ],
       ),
@@ -600,6 +780,7 @@ class _TaskFormState extends State<TaskForm> {
   }
 
   Widget _buildRecurrenceSelector(bool isDark, S l10n) {
+    final accentColor = settings.accentColor;
     final options = [
       (RecurrenceType.daily, l10n.daily),
       (RecurrenceType.weekly, l10n.weekly),
@@ -620,7 +801,7 @@ class _TaskFormState extends State<TaskForm> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: isSelected
-                  ? AppColors.primary
+                  ? accentColor
                   : (isDark ? AppColors.secondaryDark : AppColors.secondary),
               borderRadius: AppSpacing.borderRadiusFull,
             ),
@@ -641,6 +822,7 @@ class _TaskFormState extends State<TaskForm> {
   }
 
   Widget _buildDaySelector(bool isDark, S l10n) {
+    final accentColor = settings.accentColor;
     final days = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
     return Column(
@@ -668,7 +850,7 @@ class _TaskFormState extends State<TaskForm> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppColors.primary
+                      ? accentColor
                       : (isDark ? AppColors.secondaryDark : AppColors.secondary),
                   shape: BoxShape.circle,
                 ),

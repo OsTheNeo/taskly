@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
+import 'duotone_icon.dart';
 
 enum AppButtonVariant { primary, secondary, outline, ghost, destructive }
 enum AppButtonSize { sm, md, lg }
@@ -10,7 +11,7 @@ class AppButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final AppButtonVariant variant;
   final AppButtonSize size;
-  final IconData? icon;
+  final String? iconName;
   final bool isLoading;
   final bool fullWidth;
 
@@ -20,7 +21,7 @@ class AppButton extends StatelessWidget {
     this.onPressed,
     this.variant = AppButtonVariant.primary,
     this.size = AppButtonSize.md,
-    this.icon,
+    this.iconName,
     this.isLoading = false,
     this.fullWidth = false,
   });
@@ -57,8 +58,8 @@ class AppButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: _getIconSize()),
+                  if (iconName != null) ...[
+                    DuotoneIcon(iconName!, size: _getIconSize(), color: _getForegroundColor(isDark)),
                     const SizedBox(width: 8),
                   ],
                   Text(

@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:radix_icons/radix_icons.dart';
 import '../services/injection.dart';
 import '../services/auth_service.dart';
 import '../l10n/app_localizations.dart';
@@ -60,8 +59,8 @@ class _AuthPageState extends State<AuthPage> {
                         color: primaryColor,
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(
-                        RadixIcons.Check,
+                      child: DuotoneIcon(
+                        DuotoneIcon.check,
                         size: 28,
                         color: isDark ? AppColors.primaryForegroundDark : AppColors.primaryForeground,
                       ),
@@ -98,7 +97,7 @@ class _AuthPageState extends State<AuthPage> {
                   label: l10n.name,
                   placeholder: l10n.namePlaceholder,
                   controller: _nameController,
-                  prefixIcon: RadixIcons.Person,
+                  prefixIconName: DuotoneIcon.user,
                 ),
                 const SizedBox(height: 16),
               ],
@@ -108,7 +107,7 @@ class _AuthPageState extends State<AuthPage> {
                 placeholder: l10n.emailPlaceholder,
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                prefixIcon: RadixIcons.Envelope_Closed,
+                prefixIconName: DuotoneIcon.mail,
               ),
               const SizedBox(height: 16),
 
@@ -117,7 +116,7 @@ class _AuthPageState extends State<AuthPage> {
                 placeholder: l10n.passwordPlaceholder,
                 controller: _passwordController,
                 obscureText: true,
-                prefixIcon: RadixIcons.Lock_Closed,
+                prefixIconName: DuotoneIcon.lock,
               ),
 
               if (_isLogin) ...[

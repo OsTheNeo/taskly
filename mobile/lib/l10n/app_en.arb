@@ -48,6 +48,7 @@
     }
   },
   "noReminder": "No reminder",
+  "tapToSetTime": "Tap to set time",
   "saveTask": "Save task",
   "enterTitle": "Please enter a title",
   "notificationDisabled": "Notification disabled",

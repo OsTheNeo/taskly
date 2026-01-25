@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
+import 'duotone_icon.dart';
 
 class AppCheckbox extends StatelessWidget {
   final bool value;
@@ -40,8 +41,8 @@ class AppCheckbox extends StatelessWidget {
           ),
         ),
         child: value
-            ? Icon(
-                Icons.check,
+            ? DuotoneIcon(
+                DuotoneIcon.check,
                 size: 14,
                 color: primaryFgColor,
               )

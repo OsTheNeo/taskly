@@ -1,12 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
-import 'package:radix_icons/radix_icons.dart';
 import '../services/injection.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
 import '../l10n/app_localizations.dart';
 import '../models/task_category.dart';
+import '../state/settings_state.dart' as settings;
 import '../widgets/ui/ui.dart';
 import '../widgets/task_form.dart';
 
@@ -24,15 +24,14 @@ class _HomePageState extends State<HomePage> {
 
   List<Map<String, dynamic>> _tasks = [];
   Map<String, Map<String, dynamic>> _completions = {}; // taskId -> completion
+  List<Map<String, dynamic>> _myChallenges = []; // Challenges user is participating in
   bool _isLoading = true;
   String? _error;
 
-  // Search and filter
-  String _searchQuery = '';
+  // Filters
   String? _selectedCategoryFilter;
   bool _showCompletedOnly = false;
   bool _showPendingOnly = false;
-  final _searchController = TextEditingController();
 
   // Group tasks summary
   final int _groupTasksTotal = 0;
@@ -41,14 +40,6 @@ class _HomePageState extends State<HomePage> {
   // Filtered tasks
   List<Map<String, dynamic>> get _filteredTasks {
     var result = _tasks;
-
-    // Search filter
-    if (_searchQuery.isNotEmpty) {
-      result = result.where((task) {
-        final title = (task['title'] as String? ?? '').toLowerCase();
-        return title.contains(_searchQuery.toLowerCase());
-      }).toList();
-    }
 
     // Category filter
     if (_selectedCategoryFilter != null) {
@@ -73,11 +64,6 @@ class _HomePageState extends State<HomePage> {
     _loadTasks();
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   Future<void> _loadTasks() async {
     if (_currentUser == null) return;
@@ -90,14 +76,16 @@ class _HomePageState extends State<HomePage> {
     try {
       final firebaseUid = _currentUser!.uid;
 
-      // Cargar tareas y completados en paralelo
+      // Cargar tareas, completados y retos en paralelo
       final results = await Future.wait([
         _dataService.getTasks(firebaseUid),
         _dataService.getTodayCompletions(firebaseUid),
+        _dataService.getChallenges(visitorId: firebaseUid, activeOnly: true),
       ]);
 
       final tasks = results[0];
       final completions = results[1];
+      final challenges = results[2];
 
       // Mapear completados por task_id
       final completionsMap = <String, Map<String, dynamic>>{};
@@ -108,6 +96,7 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _tasks = tasks;
         _completions = completionsMap;
+        _myChallenges = challenges;
         _isLoading = false;
       });
     } catch (e) {
@@ -245,8 +234,8 @@ class _HomePageState extends State<HomePage> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                RadixIcons.Cross_Circled,
+                              DuotoneIcon(
+                                DuotoneIcon.xmark,
                                 size: 48,
                                 color: AppColors.destructive,
                               ),
@@ -255,151 +244,117 @@ class _HomePageState extends State<HomePage> {
                               const SizedBox(height: 12),
                               AppButton(
                                 label: 'Reintentar',
+                                iconName: DuotoneIcon.refresh,
                                 onPressed: _loadTasks,
                               ),
                             ],
                           ),
                         )
-                      : RefreshIndicator(
-                          onRefresh: _loadTasks,
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Progress Card
-                                _buildProgressCard(isDark, l10n),
-                                const SizedBox(height: 20),
-
-                                // Group Tasks Shortcut
-                                _buildGroupTasksShortcut(isDark, l10n),
-                                const SizedBox(height: 20),
-
-                                // Search bar
-                                _buildSearchBar(isDark),
-                                const SizedBox(height: 12),
-
-                                // Filter chips
-                                _buildFilterChips(isDark),
-                                const SizedBox(height: 20),
-
-                                // My Tasks Section
-                                Row(
+                      : _tasks.isEmpty
+                          ? _buildEmptyState(isDark, l10n)
+                          : RefreshIndicator(
+                              onRefresh: _loadTasks,
+                              child: SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      l10n.myTasks,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark ? AppColors.foregroundDark : AppColors.foreground,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        '$_completedCount/${_tasks.length}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    GestureDetector(
-                                      onTap: () => _showAddTaskSheet(context),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).colorScheme.primary,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              RadixIcons.Plus,
-                                              size: 14,
-                                              color: Theme.of(context).colorScheme.onPrimary,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'Nueva',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: Theme.of(context).colorScheme.onPrimary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
+                                    // Progress Card - only show when there are tasks
+                                    _buildProgressCard(isDark, l10n),
+                                    const SizedBox(height: 20),
 
-                                // Tasks List
-                                if (_filteredTasks.isEmpty)
-                                  Container(
-                                    padding: const EdgeInsets.all(32),
-                                    decoration: BoxDecoration(
-                                      color: isDark ? AppColors.cardDark : AppColors.card,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: isDark ? AppColors.borderDark : AppColors.border,
-                                      ),
-                                    ),
-                                    child: Column(
+                                    // Challenges Section - show when user has challenges
+                                    if (_myChallenges.isNotEmpty) ...[
+                                      _buildChallengesSection(isDark),
+                                      const SizedBox(height: 20),
+                                    ],
+
+                                    // Group Tasks Shortcut - only show when there are group tasks
+                                    if (_groupTasksTotal > 0) ...[
+                                      _buildGroupTasksShortcut(isDark, l10n),
+                                      const SizedBox(height: 20),
+                                    ],
+
+                                    // Filter chips
+                                    _buildFilterChips(isDark),
+                                    const SizedBox(height: 20),
+
+                                    // My Tasks Section
+                                    Row(
                                       children: [
-                                        Icon(
-                                          _searchQuery.isNotEmpty || _selectedCategoryFilter != null
-                                              ? RadixIcons.Magnifying_Glass
-                                              : RadixIcons.Checkbox,
-                                          size: 48,
-                                          color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
-                                        ),
-                                        const SizedBox(height: 12),
                                         Text(
-                                          _searchQuery.isNotEmpty || _selectedCategoryFilter != null
-                                              ? 'No hay resultados'
-                                              : 'No tienes tareas',
+                                          l10n.myTasks,
                                           style: TextStyle(
-                                            fontSize: 16,
+                                            fontSize: 18,
                                             fontWeight: FontWeight.w600,
                                             color: isDark ? AppColors.foregroundDark : AppColors.foreground,
                                           ),
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          _searchQuery.isNotEmpty || _selectedCategoryFilter != null
-                                              ? 'Prueba con otros filtros'
-                                              : 'Crea tu primera tarea para comenzar',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            '$_completedCount/${_tasks.length}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Theme.of(context).colorScheme.primary,
+                                            ),
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        GestureDetector(
+                                          onTap: () => _showAddTaskSheet(context),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: isDark ? Colors.white : Colors.black,
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                DuotoneIcon(
+                                                  DuotoneIcon.plus,
+                                                  size: 12,
+                                                  accentColor: Theme.of(context).colorScheme.primary,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'Nueva',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isDark ? Colors.black : Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                  )
-                                else
-                                  ..._filteredTasks.map((task) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: _buildTaskCard(task, isDark),
-                                  )),
+                                    const SizedBox(height: 12),
 
-                                const SizedBox(height: 100),
-                              ],
+                                    // Tasks List (filtered results)
+                                    if (_filteredTasks.isEmpty)
+                                      _buildFilteredEmptyState(isDark)
+                                    else
+                                      ..._filteredTasks.map((task) => Padding(
+                                        padding: const EdgeInsets.only(bottom: 10),
+                                        child: _buildTaskCard(task, isDark),
+                                      )),
+
+                                    const SizedBox(height: 100),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
             ),
           ],
         ),
@@ -407,50 +362,178 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSearchBar(bool isDark) {
+  /// Empty state when filtered results are empty
+  Widget _buildFilteredEmptyState(bool isDark) {
     return Container(
+      padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? AppColors.borderDark : AppColors.border,
         ),
       ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (value) {
-          setState(() => _searchQuery = value);
-        },
-        style: TextStyle(
-          color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+      child: Column(
+        children: [
+          DuotoneIcon(
+            DuotoneIcon.sliders,
+            size: 48,
+            color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No hay resultados',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Prueba con otros filtros',
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isDark, S l10n) {
+    final accentColor = settings.accentColor;
+
+    // Empty state when no tasks at all - more engaging
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accentColor.withValues(alpha: 0.08),
+            accentColor.withValues(alpha: 0.02),
+          ],
         ),
-        decoration: InputDecoration(
-          hintText: 'Buscar tareas...',
-          hintStyle: TextStyle(
-            color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
-          ),
-          prefixIcon: Icon(
-            RadixIcons.Magnifying_Glass,
-            color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
-            size: 18,
-          ),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? GestureDetector(
-                  onTap: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                  },
-                  child: Icon(
-                    RadixIcons.Cross_2,
-                    color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
-                    size: 16,
-                  ),
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.2),
         ),
       ),
+      child: Column(
+        children: [
+          // Illustration
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: DuotoneIcon(
+                DuotoneIcon.rocket,
+                size: 40,
+                accentColor: accentColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            '¡Comienza tu día productivo!',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Crea tu primera tarea y empieza a construir hábitos positivos',
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+
+          // Tips
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: (isDark ? AppColors.cardDark : AppColors.card).withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildTip(
+                  icon: DuotoneIcon.target,
+                  text: 'Define metas claras y alcanzables',
+                  isDark: isDark,
+                  accentColor: accentColor,
+                ),
+                const SizedBox(height: 10),
+                _buildTip(
+                  icon: DuotoneIcon.flame,
+                  text: 'Mantén rachas para motivarte',
+                  isDark: isDark,
+                  accentColor: accentColor,
+                ),
+                const SizedBox(height: 10),
+                _buildTip(
+                  icon: DuotoneIcon.users,
+                  text: 'Comparte retos con amigos',
+                  isDark: isDark,
+                  accentColor: accentColor,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // CTA Button
+          SizedBox(
+            width: double.infinity,
+            child: AppButton(
+              label: 'Crear mi primera tarea',
+              iconName: DuotoneIcon.plus,
+              onPressed: () => _showAddTaskSheet(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTip({
+    required String icon,
+    required String text,
+    required bool isDark,
+    required Color accentColor,
+  }) {
+    return Row(
+      children: [
+        DuotoneIcon(
+          icon,
+          size: 18,
+          accentColor: accentColor,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -469,6 +552,7 @@ class _HomePageState extends State<HomePage> {
           // Status filters
           _buildFilterChip(
             label: 'Todas',
+            iconName: DuotoneIcon.layers,
             isSelected: !_showCompletedOnly && !_showPendingOnly && _selectedCategoryFilter == null,
             onTap: () {
               setState(() {
@@ -482,6 +566,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 8),
           _buildFilterChip(
             label: 'Pendientes',
+            iconName: DuotoneIcon.clock,
             isSelected: _showPendingOnly,
             onTap: () {
               setState(() {
@@ -494,6 +579,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 8),
           _buildFilterChip(
             label: 'Completadas',
+            iconName: DuotoneIcon.check,
             isSelected: _showCompletedOnly,
             onTap: () {
               setState(() {
@@ -516,6 +602,7 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.only(right: 8),
               child: _buildFilterChip(
                 label: cat.name,
+                iconName: cat.iconName,
                 isSelected: _selectedCategoryFilter == cat.id,
                 color: cat.accentColor,
                 onTap: () {
@@ -539,6 +626,7 @@ class _HomePageState extends State<HomePage> {
     required VoidCallback onTap,
     required bool isDark,
     Color? color,
+    String? iconName,
   }) {
     final chipColor = color ?? (isDark ? AppColors.foregroundDark : AppColors.foreground);
 
@@ -558,15 +646,26 @@ class _HomePageState extends State<HomePage> {
                 : (isDark ? AppColors.borderDark : AppColors.border),
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected
-                ? chipColor
-                : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (iconName != null) ...[
+              DuotoneIcon(
+                iconName,
+                size: 14,
+                accentColor: chipColor,
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -578,7 +677,7 @@ class _HomePageState extends State<HomePage> {
     final goalsCompleted = goals.where(_isTaskCompleted).length;
     final tasksOnly = _tasks.where((t) => t['task_type'] != 'goal').toList();
     final tasksCompleted = tasksOnly.where(_isTaskCompleted).length;
-    final accentColor = Theme.of(context).colorScheme.primary;
+    final accentColor = settings.accentColor;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -632,10 +731,11 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Expanded(
                       child: _buildMetricItem(
-                        RadixIcons.Target,
+                        DuotoneIcon.target,
                         '$goalsCompleted/$goalsCount',
                         'Metas',
                         isDark,
+                        accentColor,
                       ),
                     ),
                     Container(
@@ -645,12 +745,29 @@ class _HomePageState extends State<HomePage> {
                     ),
                     Expanded(
                       child: _buildMetricItem(
-                        RadixIcons.Checkbox,
+                        DuotoneIcon.clipboardCheck,
                         '$tasksCompleted/${tasksOnly.length}',
                         'Tareas',
                         isDark,
+                        accentColor,
                       ),
                     ),
+                    if (_myChallenges.isNotEmpty) ...[
+                      Container(
+                        width: 1,
+                        height: 32,
+                        color: isDark ? AppColors.borderDark : AppColors.border,
+                      ),
+                      Expanded(
+                        child: _buildMetricItem(
+                          DuotoneIcon.rocket,
+                          '${_myChallenges.length}',
+                          'Retos',
+                          isDark,
+                          accentColor,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -661,16 +778,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildMetricItem(IconData icon, String value, String label, bool isDark) {
+  Widget _buildMetricItem(String iconName, String value, String label, bool isDark, Color accentColor) {
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
+            DuotoneIcon(
+              iconName,
               size: 14,
-              color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+              accentColor: accentColor,
             ),
             const SizedBox(width: 6),
             Text(
@@ -692,6 +809,165 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildChallengesSection(bool isDark) {
+    final accentColor = settings.accentColor;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                DuotoneIcon(
+                  DuotoneIcon.rocket,
+                  size: 18,
+                  accentColor: accentColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Mis Retos',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${_myChallenges.length} activos',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: accentColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 100,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _myChallenges.length,
+            itemBuilder: (context, index) {
+              final challenge = _myChallenges[index];
+              return Padding(
+                padding: EdgeInsets.only(right: index < _myChallenges.length - 1 ? 12 : 0),
+                child: _buildChallengeCard(challenge, isDark),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChallengeCard(Map<String, dynamic> challenge, bool isDark) {
+    final accentColor = settings.accentColor;
+    final title = challenge['title'] as String? ?? 'Reto';
+    final emoji = challenge['emoji'] as String? ?? DuotoneIcon.award;
+    final targetValue = (challenge['target_value'] as num?)?.toInt() ?? 0;
+
+    // Get participation data
+    Map<String, dynamic>? participation;
+    final rawParticipation = challenge['my_participation'];
+    if (rawParticipation is List && rawParticipation.isNotEmpty) {
+      participation = rawParticipation.first as Map<String, dynamic>?;
+    } else if (rawParticipation is Map<String, dynamic>) {
+      participation = rawParticipation;
+    }
+
+    final currentScore = (participation?['current_score'] as num?)?.toInt() ?? 0;
+    final progress = targetValue > 0 ? (currentScore / targetValue).clamp(0.0, 1.0) : 0.0;
+
+    return GestureDetector(
+      onTap: () {
+        // Navigate to challenges page
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ve a la pestaña "Retos" para más detalles'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
+      child: Container(
+        width: 160,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDark : AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: accentColor.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: DuotoneIcon(
+                      emoji,
+                      size: 16,
+                      accentColor: accentColor,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${(progress * 100).round()}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: accentColor,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: accentColor.withValues(alpha: 0.15),
+                valueColor: AlwaysStoppedAnimation(accentColor),
+                minHeight: 4,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -723,10 +999,10 @@ class _HomePageState extends State<HomePage> {
                 color: isDark ? AppColors.secondaryDark : AppColors.secondary,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                RadixIcons.Person,
-                color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+              child: DuotoneIcon(
+                DuotoneIcon.users,
                 size: 22,
+                color: isDark ? AppColors.foregroundDark : AppColors.foreground,
               ),
             ),
             const SizedBox(width: 14),
@@ -753,10 +1029,10 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            Icon(
-              RadixIcons.Chevron_Right,
-              color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+            DuotoneIcon(
+              DuotoneIcon.chevronRight,
               size: 20,
+              color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
             ),
           ],
         ),
@@ -788,7 +1064,7 @@ class _HomePageState extends State<HomePage> {
           color: AppColors.destructive.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Icon(RadixIcons.Trash, color: AppColors.destructive),
+        child: DuotoneIcon(DuotoneIcon.trash, size: 20, accentColor: AppColors.destructive),
       ),
       onDismissed: (_) => _deleteTask(task['id']),
       child: GestureDetector(
@@ -837,7 +1113,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   child: isCompleted
-                      ? Icon(RadixIcons.Check, size: 14, color: Theme.of(context).colorScheme.onPrimary)
+                      ? DuotoneIcon(DuotoneIcon.check, size: 14, color: Theme.of(context).colorScheme.onPrimary)
                       : isGoal && hasProgress
                           ? Center(
                               child: Text(
@@ -884,7 +1160,7 @@ class _HomePageState extends State<HomePage> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(category.icon, size: 12, color: accentColor),
+                              DuotoneIcon(category.iconName, size: 12, color: isDark ? AppColors.foregroundDark : AppColors.foreground, accentColor: accentColor),
                               const SizedBox(width: 4),
                               Text(
                                 category.name,
@@ -1249,6 +1525,7 @@ class _ProgressFormState extends State<ProgressForm> {
         AppButton(
           label: l10n.save,
           fullWidth: true,
+          iconName: DuotoneIcon.check,
           onPressed: () => widget.onSave(_value),
         ),
       ],

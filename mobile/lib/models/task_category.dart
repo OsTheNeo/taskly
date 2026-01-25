@@ -1,40 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:radix_icons/radix_icons.dart';
+import '../widgets/ui/duotone_icon.dart';
 
-/// Available icons for categories
+/// Available icons for categories (now using DuotoneIcon names)
 class CategoryIcons {
-  static const Map<String, IconData> icons = {
-    'bookmark': RadixIcons.Bookmark,
-    'star': RadixIcons.Star,
-    'star_filled': RadixIcons.Star_Filled,
-    'lightning': RadixIcons.Lightning_Bolt,
-    'rocket': RadixIcons.Rocket,
-    'target': RadixIcons.Target,
-    'pencil': RadixIcons.Pencil_1,
-    'reader': RadixIcons.Reader,
-    'backpack': RadixIcons.Backpack,
-    'home': RadixIcons.Home,
-    'person': RadixIcons.Person,
-    'chat': RadixIcons.Chat_Bubble,
-    'camera': RadixIcons.Camera,
-    'video': RadixIcons.Video,
-    'file': RadixIcons.File,
-    'code': RadixIcons.Code,
-    'gear': RadixIcons.Gear,
-    'sun': RadixIcons.Sun,
-    'moon': RadixIcons.Moon,
-    'timer': RadixIcons.Timer,
-    'activity': RadixIcons.Activity_Log,
-    'dashboard': RadixIcons.Dashboard,
+  static const Map<String, String> icons = {
+    'bookmark': DuotoneIcon.bookmark,
+    'star': DuotoneIcon.sparkle,
+    'rocket': DuotoneIcon.rocket,
+    'target': DuotoneIcon.target,
+    'home': DuotoneIcon.home,
+    'user': DuotoneIcon.user,
+    'users': DuotoneIcon.users,
+    'gear': DuotoneIcon.gear,
+    'timer': DuotoneIcon.timer,
+    'heart': DuotoneIcon.heart,
+    'gauge': DuotoneIcon.gauge,
+    'book': DuotoneIcon.book,
+    'wallet': DuotoneIcon.wallet,
+    'feather': DuotoneIcon.feather,
+    'leaf': DuotoneIcon.leaf,
+    'flame': DuotoneIcon.flame,
+    'chart': DuotoneIcon.chart,
+    'bolt': DuotoneIcon.bolt,
   };
 
-  static IconData fromString(String? key) {
-    return icons[key] ?? RadixIcons.Bookmark;
+  static String fromString(String? key) {
+    return icons[key] ?? DuotoneIcon.bookmark;
   }
 
-  static String? toKey(IconData icon) {
+  static String? toKey(String iconName) {
     for (final entry in icons.entries) {
-      if (entry.value == icon) return entry.key;
+      if (entry.value == iconName) return entry.key;
     }
     return 'bookmark';
   }
@@ -67,9 +63,9 @@ class CategoryColors {
   }
 
   static String toHex(Color color) {
-    final r = color.r.toInt().toRadixString(16).padLeft(2, '0');
-    final g = color.g.toInt().toRadixString(16).padLeft(2, '0');
-    final b = color.b.toInt().toRadixString(16).padLeft(2, '0');
+    final r = (color.r * 255).round().toRadixString(16).padLeft(2, '0');
+    final g = (color.g * 255).round().toRadixString(16).padLeft(2, '0');
+    final b = (color.b * 255).round().toRadixString(16).padLeft(2, '0');
     return '#$r$g$b'.toUpperCase();
   }
 }
@@ -78,26 +74,26 @@ class CategoryColors {
 class TaskCategory {
   final String id;
   final String name;
-  final IconData icon;
+  final String iconName; // DuotoneIcon name
   final Color accentColor;
 
   const TaskCategory({
     required this.id,
     required this.name,
-    required this.icon,
+    required this.iconName,
     required this.accentColor,
   });
 
   TaskCategory copyWith({
     String? id,
     String? name,
-    IconData? icon,
+    String? iconName,
     Color? accentColor,
   }) {
     return TaskCategory(
       id: id ?? this.id,
       name: name ?? this.name,
-      icon: icon ?? this.icon,
+      iconName: iconName ?? this.iconName,
       accentColor: accentColor ?? this.accentColor,
     );
   }
@@ -106,7 +102,7 @@ class TaskCategory {
     return {
       'id': id,
       'name': name,
-      'icon': CategoryIcons.toKey(icon),
+      'icon': CategoryIcons.toKey(iconName),
       'accentColor': CategoryColors.toHex(accentColor),
     };
   }
@@ -115,7 +111,7 @@ class TaskCategory {
     return TaskCategory(
       id: json['id'] as String,
       name: json['name'] as String,
-      icon: CategoryIcons.fromString(json['icon'] as String?),
+      iconName: CategoryIcons.fromString(json['icon'] as String?),
       accentColor: CategoryColors.fromHex(json['accentColor'] as String?) ?? const Color(0xFF18181B),
     );
   }
@@ -129,67 +125,67 @@ class PredefinedCategories {
     TaskCategory(
       id: 'health',
       name: 'Salud',
-      icon: RadixIcons.Activity_Log,
+      iconName: DuotoneIcon.heart,
       accentColor: const Color(0xFFEF4444), // Red
     ),
     TaskCategory(
       id: 'fitness',
       name: 'Ejercicio',
-      icon: RadixIcons.Timer,
+      iconName: DuotoneIcon.timer,
       accentColor: const Color(0xFFF97316), // Orange
     ),
     TaskCategory(
       id: 'work',
       name: 'Trabajo',
-      icon: RadixIcons.Dashboard,
+      iconName: DuotoneIcon.gauge,
       accentColor: const Color(0xFF3B82F6), // Blue
     ),
     TaskCategory(
       id: 'study',
       name: 'Estudio',
-      icon: RadixIcons.Reader,
+      iconName: DuotoneIcon.book,
       accentColor: const Color(0xFF8B5CF6), // Violet
     ),
     TaskCategory(
       id: 'personal',
       name: 'Personal',
-      icon: RadixIcons.Person,
+      iconName: DuotoneIcon.user,
       accentColor: const Color(0xFF6366F1), // Indigo
     ),
     TaskCategory(
       id: 'home',
       name: 'Hogar',
-      icon: RadixIcons.Home,
+      iconName: DuotoneIcon.home,
       accentColor: const Color(0xFF14B8A6), // Teal
     ),
     TaskCategory(
       id: 'finance',
       name: 'Finanzas',
-      icon: RadixIcons.Backpack,
+      iconName: DuotoneIcon.wallet,
       accentColor: const Color(0xFF22C55E), // Green
     ),
     TaskCategory(
       id: 'social',
       name: 'Social',
-      icon: RadixIcons.Chat_Bubble,
+      iconName: DuotoneIcon.users,
       accentColor: const Color(0xFFEC4899), // Pink
     ),
     TaskCategory(
       id: 'creativity',
       name: 'Creatividad',
-      icon: RadixIcons.Pencil_1,
+      iconName: DuotoneIcon.feather,
       accentColor: const Color(0xFFF59E0B), // Amber
     ),
     TaskCategory(
       id: 'mindfulness',
       name: 'Bienestar',
-      icon: RadixIcons.Sun,
+      iconName: DuotoneIcon.leaf,
       accentColor: const Color(0xFF06B6D4), // Cyan
     ),
     TaskCategory(
       id: 'other',
       name: 'Otros',
-      icon: RadixIcons.Bookmark,
+      iconName: DuotoneIcon.bookmark,
       accentColor: _defaultColor,
     ),
   ];

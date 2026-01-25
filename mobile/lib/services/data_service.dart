@@ -122,6 +122,7 @@ class DataService {
     String? progressUnit,
     double? progressTarget,
     String? categoryId,
+    String? householdId,
   }) async {
     try {
       final profile = await getProfile(visitorId);
@@ -143,6 +144,7 @@ class DataService {
         'has_progress': hasProgress,
         'progress_unit': progressUnit,
         'progress_target': progressTarget,
+        if (householdId != null) 'household_id': householdId,
       };
 
       final response = await _client
@@ -263,7 +265,7 @@ class DataService {
 
       final response = await _client
           .from(SupabaseConfig.taskCompletionsTable)
-          .select('*, task:taskly_tasks(*)')
+          .select()
           .eq('completed_by', profile['id'])
           .eq('completion_date', today);
 
@@ -346,6 +348,37 @@ class DataService {
       return response;
     } catch (e) {
       debugPrint('[DataService] Error creating category: $e');
+      return null;
+    }
+  }
+
+  /// Actualiza una categoría personalizada
+  Future<Map<String, dynamic>?> updateCategory({
+    required String categoryId,
+    String? name,
+    String? icon,
+    String? color,
+  }) async {
+    try {
+      final updates = <String, dynamic>{};
+
+      if (name != null) updates['name'] = name;
+      if (icon != null) updates['icon'] = icon;
+      if (color != null) updates['color'] = color;
+
+      if (updates.isEmpty) return null;
+
+      final response = await _client
+          .from(SupabaseConfig.categoriesTable)
+          .update(updates)
+          .eq('id', categoryId)
+          .select()
+          .single();
+
+      debugPrint('[DataService] Category updated: $categoryId');
+      return response;
+    } catch (e) {
+      debugPrint('[DataService] Error updating category: $e');
       return null;
     }
   }
@@ -451,14 +484,130 @@ class DataService {
       final profile = await getProfile(visitorId);
       if (profile == null) return [];
 
+      // Obtener membresías del usuario
       final memberships = await _client
           .from(SupabaseConfig.householdMembersTable)
-          .select('household_id, role, household:taskly_households(*)')
+          .select('household_id, role')
           .eq('user_id', profile['id']);
 
-      return List<Map<String, dynamic>>.from(memberships);
+      if (memberships.isEmpty) return [];
+
+      // Obtener los hogares correspondientes
+      final householdIds = memberships.map((m) => m['household_id'] as String).toList();
+      final households = await _client
+          .from(SupabaseConfig.householdsTable)
+          .select()
+          .inFilter('id', householdIds);
+
+      // Combinar datos
+      final result = <Map<String, dynamic>>[];
+      for (final membership in memberships) {
+        final household = households.firstWhere(
+          (h) => h['id'] == membership['household_id'],
+          orElse: () => <String, dynamic>{},
+        );
+        if (household.isNotEmpty) {
+          result.add({
+            'household_id': membership['household_id'],
+            'role': membership['role'],
+            'household': household,
+          });
+        }
+      }
+
+      return result;
     } catch (e) {
       debugPrint('[DataService] Error getting households: $e');
+      return [];
+    }
+  }
+
+  /// Actualiza un hogar (nombre, icono, color)
+  Future<Map<String, dynamic>?> updateHousehold({
+    required String householdId,
+    String? name,
+    String? icon,
+    String? color,
+  }) async {
+    try {
+      final updates = <String, dynamic>{};
+      if (name != null) updates['name'] = name;
+      if (icon != null) updates['icon'] = icon;
+      if (color != null) updates['color'] = color;
+
+      if (updates.isEmpty) return null;
+
+      final result = await _client
+          .from(SupabaseConfig.householdsTable)
+          .update(updates)
+          .eq('id', householdId)
+          .select()
+          .single();
+
+      debugPrint('[DataService] Updated household: $householdId');
+      return result;
+    } catch (e) {
+      debugPrint('[DataService] Error updating household: $e');
+      return null;
+    }
+  }
+
+  /// Obtiene las tareas de un grupo/hogar
+  Future<List<Map<String, dynamic>>> getGroupTasks({
+    required String householdId,
+  }) async {
+    try {
+      final tasks = await _client
+          .from(SupabaseConfig.tasksTable)
+          .select()
+          .eq('household_id', householdId)
+          .order('created_at', ascending: false);
+
+      return tasks;
+    } catch (e) {
+      debugPrint('[DataService] Error getting group tasks: $e');
+      return [];
+    }
+  }
+
+  /// Obtiene los miembros de un hogar
+  Future<List<Map<String, dynamic>>> getHouseholdMembers({
+    required String householdId,
+  }) async {
+    try {
+      final memberships = await _client
+          .from(SupabaseConfig.householdMembersTable)
+          .select('user_id, role, joined_at')
+          .eq('household_id', householdId);
+
+      if (memberships.isEmpty) return [];
+
+      // Obtener los perfiles de los usuarios
+      final userIds = memberships.map((m) => m['user_id'] as String).toList();
+      final profiles = await _client
+          .from(SupabaseConfig.profilesTable)
+          .select('id, display_name, photo_url')
+          .inFilter('id', userIds);
+
+      // Combinar datos
+      final result = <Map<String, dynamic>>[];
+      for (final membership in memberships) {
+        final profile = profiles.firstWhere(
+          (p) => p['id'] == membership['user_id'],
+          orElse: () => <String, dynamic>{},
+        );
+        if (profile.isNotEmpty) {
+          result.add({
+            ...profile,
+            'role': membership['role'],
+            'joined_at': membership['joined_at'],
+          });
+        }
+      }
+
+      return result;
+    } catch (e) {
+      debugPrint('[DataService] Error getting household members: $e');
       return [];
     }
   }
@@ -588,14 +737,37 @@ class DataService {
 
       final startDate = DateTime.now().subtract(Duration(days: days));
 
-      final response = await _client
+      // Obtener completados
+      final completions = await _client
           .from(SupabaseConfig.taskCompletionsTable)
-          .select('*, task:taskly_tasks(title, task_type, color)')
+          .select()
           .eq('completed_by', profile['id'])
           .gte('completion_date', startDate.toIso8601String().split('T')[0])
           .order('completion_date', ascending: false);
 
-      return List<Map<String, dynamic>>.from(response);
+      if (completions.isEmpty) return [];
+
+      // Obtener las tareas correspondientes
+      final taskIds = completions.map((c) => c['task_id'] as String).toSet().toList();
+      final tasks = await _client
+          .from(SupabaseConfig.tasksTable)
+          .select('id, title, task_type, color')
+          .inFilter('id', taskIds);
+
+      // Crear mapa de tareas para lookup rápido
+      final taskMap = <String, Map<String, dynamic>>{};
+      for (final task in tasks) {
+        taskMap[task['id'] as String] = task;
+      }
+
+      // Combinar datos
+      return completions.map((c) {
+        final task = taskMap[c['task_id']] ?? {};
+        return {
+          ...c,
+          'task': task,
+        };
+      }).toList();
     } catch (e) {
       debugPrint('[DataService] Error getting completion history: $e');
       return [];
@@ -716,7 +888,7 @@ class DataService {
     }
   }
 
-  /// Obtiene los challenges disponibles para el usuario
+  /// Obtiene los challenges donde participa el usuario
   Future<List<Map<String, dynamic>>> getChallenges({
     required String visitorId,
     bool activeOnly = false,
@@ -725,29 +897,43 @@ class DataService {
       final profile = await getProfile(visitorId);
       if (profile == null) return [];
 
-      // Obtener households del usuario para filtrar challenges de household
-      final householdIds = <String>[];
-      final memberships = await _client
-          .from(SupabaseConfig.householdMembersTable)
-          .select('household_id')
-          .eq('user_id', profile['id']);
+      // Obtener participaciones del usuario
+      final participations = await _client
+          .from('taskly_challenge_participants')
+          .select('challenge_id, current_score, best_streak, joined_at')
+          .eq('user_id', profile['id'])
+          .eq('is_active', true);
 
-      for (final m in memberships) {
-        householdIds.add(m['household_id'] as String);
-      }
+      if (participations.isEmpty) return [];
 
-      var query = _client.from('taskly_challenges').select('''
-        *,
-        participants:taskly_challenge_participants(count),
-        my_participation:taskly_challenge_participants!inner(id, current_score, best_streak, joined_at)
-      ''').eq('my_participation.user_id', profile['id']);
+      // Obtener los challenges correspondientes
+      final challengeIds = participations.map((p) => p['challenge_id'] as String).toList();
+
+      var query = _client
+          .from('taskly_challenges')
+          .select()
+          .inFilter('id', challengeIds);
 
       if (activeOnly) {
         query = query.eq('status', 'active');
       }
 
-      final response = await query.order('start_date', ascending: false);
-      return List<Map<String, dynamic>>.from(response);
+      final challenges = await query.order('start_date', ascending: false);
+
+      // Combinar con participación
+      final result = <Map<String, dynamic>>[];
+      for (final challenge in challenges) {
+        final participation = participations.firstWhere(
+          (p) => p['challenge_id'] == challenge['id'],
+          orElse: () => <String, dynamic>{},
+        );
+        result.add({
+          ...challenge,
+          'my_participation': participation,
+        });
+      }
+
+      return result;
     } catch (e) {
       debugPrint('[DataService] Error getting challenges: $e');
       return [];
@@ -762,35 +948,57 @@ class DataService {
       final profile = await getProfile(visitorId);
       if (profile == null) return [];
 
+      // Obtener challenges donde ya participa
+      final myParticipations = await _client
+          .from('taskly_challenge_participants')
+          .select('challenge_id')
+          .eq('user_id', profile['id']);
+
+      final myIds = myParticipations.map((p) => p['challenge_id'] as String).toSet();
+
       // Obtener households del usuario
-      final householdIds = <String>[];
       final memberships = await _client
           .from(SupabaseConfig.householdMembersTable)
           .select('household_id')
           .eq('user_id', profile['id']);
 
-      for (final m in memberships) {
-        householdIds.add(m['household_id'] as String);
-      }
+      final householdIds = memberships.map((m) => m['household_id'] as String).toList();
 
-      // Challenges públicos o de mis households, que aún no he unido
-      final response = await _client
+      // Obtener challenges públicos
+      final publicChallenges = await _client
           .from('taskly_challenges')
-          .select('''
-            *,
-            participants:taskly_challenge_participants(count),
-            creator:taskly_profiles!created_by(display_name, avatar_url)
-          ''')
-          .or('visibility.eq.public,household_id.in.(${householdIds.join(",")})')
+          .select()
+          .eq('visibility', 'public')
           .neq('status', 'cancelled')
           .order('start_date', ascending: true);
 
-      // Filtrar los que ya tengo
-      final myChallenges = await getChallenges(visitorId: visitorId);
-      final myIds = myChallenges.map((c) => c['id']).toSet();
+      // Obtener challenges de mis households (si tengo)
+      List<dynamic> householdChallenges = [];
+      if (householdIds.isNotEmpty) {
+        householdChallenges = await _client
+            .from('taskly_challenges')
+            .select()
+            .eq('visibility', 'household')
+            .inFilter('household_id', householdIds)
+            .neq('status', 'cancelled')
+            .order('start_date', ascending: true);
+      }
 
-      return List<Map<String, dynamic>>.from(response)
-          .where((c) => !myIds.contains(c['id']))
+      // Combinar y filtrar los que ya tengo
+      final allChallenges = <Map<String, dynamic>>[
+        ...List<Map<String, dynamic>>.from(publicChallenges),
+        ...List<Map<String, dynamic>>.from(householdChallenges),
+      ];
+
+      // Eliminar duplicados y los que ya tengo
+      final seen = <String>{};
+      return allChallenges
+          .where((c) {
+            final id = c['id'] as String;
+            if (seen.contains(id) || myIds.contains(id)) return false;
+            seen.add(id);
+            return true;
+          })
           .toList();
     } catch (e) {
       debugPrint('[DataService] Error getting available challenges: $e');

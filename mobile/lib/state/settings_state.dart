@@ -12,6 +12,7 @@ import '../models/task_category.dart';
 
 final themeMode = signal(ThemeMode.system);
 final accentColorIndex = signal(0);
+final fontFamilyIndex = signal(0);
 final locale = signal(const Locale('es'));
 final customCategories = signal(<TaskCategory>[]);
 
@@ -33,6 +34,23 @@ const List<Color> accentColors = [
 
 Color get accentColor => accentColors[accentColorIndex.value];
 
+// Available font families
+const List<String> fontFamilies = [
+  'System', // Default system font (Inter)
+  'Open Sans', // Clean sans-serif
+  'Roboto Slab', // Authoritative slab serif
+  'Caveat', // Handwritten/script style
+];
+
+const List<String> fontFamilyNames = [
+  'Sistema',
+  'Open Sans',
+  'Roboto Slab',
+  'Caveat',
+];
+
+String get fontFamily => fontFamilies[fontFamilyIndex.value];
+
 List<TaskCategory> get allCategories => [
   ...PredefinedCategories.all,
   ...customCategories.value,
@@ -45,6 +63,7 @@ List<TaskCategory> get allCategories => [
 const String _boxName = 'settings';
 const String _themeModeKey = 'themeMode';
 const String _accentColorKey = 'accentColor';
+const String _fontFamilyKey = 'fontFamily';
 const String _localeKey = 'locale';
 const String _customCategoriesKey = 'customCategories';
 
@@ -58,6 +77,7 @@ Future<void> initSettings() async {
 
   final themeModeIndex = box.get(_themeModeKey, defaultValue: 0) as int;
   final savedAccentColorIndex = box.get(_accentColorKey, defaultValue: 0) as int;
+  final savedFontFamilyIndex = box.get(_fontFamilyKey, defaultValue: 0) as int;
   final localeCode = box.get(_localeKey, defaultValue: 'es') as String;
   final customCategoriesJson = box.get(_customCategoriesKey, defaultValue: '[]') as String;
 
@@ -69,6 +89,7 @@ Future<void> initSettings() async {
 
   themeMode.value = ThemeMode.values[themeModeIndex];
   accentColorIndex.value = savedAccentColorIndex;
+  fontFamilyIndex.value = savedFontFamilyIndex;
   locale.value = Locale(localeCode);
   customCategories.value = categories;
 }
@@ -88,6 +109,13 @@ Future<void> setAccentColor(int index) async {
   final box = await Hive.openBox(_boxName);
   await box.put(_accentColorKey, index);
   accentColorIndex.value = index;
+}
+
+Future<void> setFontFamily(int index) async {
+  if (index < 0 || index >= fontFamilies.length) return;
+  final box = await Hive.openBox(_boxName);
+  await box.put(_fontFamilyKey, index);
+  fontFamilyIndex.value = index;
 }
 
 Future<void> setLocale(Locale newLocale) async {

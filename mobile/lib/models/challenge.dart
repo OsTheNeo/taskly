@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import '../widgets/ui/duotone_icon.dart';
 
 enum ChallengeType {
   streak,      // Mantener racha
@@ -170,18 +170,18 @@ class Challenge {
     }
   }
 
-  IconData get typeIcon {
+  String get typeIcon {
     switch (type) {
       case ChallengeType.streak:
-        return Icons.local_fire_department;
+        return DuotoneIcon.flame;
       case ChallengeType.completion:
-        return Icons.check_circle;
+        return DuotoneIcon.clipboardCheck;
       case ChallengeType.category:
-        return Icons.category;
+        return DuotoneIcon.layers;
       case ChallengeType.speed:
-        return Icons.speed;
+        return DuotoneIcon.bolt;
       case ChallengeType.perfectDay:
-        return Icons.star;
+        return DuotoneIcon.star;
     }
   }
 

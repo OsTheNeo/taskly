@@ -9,3 +9,4 @@ export 'app_input.dart';
 export 'app_checkbox.dart';
 export 'app_bottom_sheet.dart';
 export 'app_time_picker.dart';
+export 'duotone_icon.dart';

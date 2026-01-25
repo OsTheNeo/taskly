@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:radix_icons/radix_icons.dart';
+import 'package:signals/signals_flutter.dart';
 import '../l10n/app_localizations.dart';
+import '../state/settings_state.dart' as settings;
 import '../widgets/ui/ui.dart';
 import 'challenges_page.dart';
 import 'profile_page.dart';
@@ -86,9 +87,12 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     final l10n = S.of(context)!;
 
     final labels = [l10n.today, l10n.tasks, 'Retos', l10n.profile];
-    final icons = [RadixIcons.Home, RadixIcons.Checkbox, RadixIcons.Rocket, RadixIcons.Person];
+    final iconNames = [DuotoneIcon.home, DuotoneIcon.users, DuotoneIcon.rocket, DuotoneIcon.user];
 
-    return Scaffold(
+    return Watch((context) {
+      final accentColor = settings.accentColor;
+
+      return Scaffold(
       body: Stack(
         children: [
           // Animated page transitions
@@ -143,9 +147,10 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
                       if (index > 0) const SizedBox(width: 16),
                       _AnimatedNavItem(
                         index: index,
-                        icon: icons[index],
+                        iconName: iconNames[index],
                         label: labels[index],
                         isDark: isDark,
+                        accentColor: accentColor,
                         expandAnimation: _expandAnimations[index],
                         labelAnimation: _labelAnimations[index],
                         onTap: () => _onTabChanged(index),
@@ -159,23 +164,26 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         ],
       ),
     );
+    });
   }
 }
 
 class _AnimatedNavItem extends StatelessWidget {
   final int index;
-  final IconData icon;
+  final String iconName;
   final String label;
   final bool isDark;
+  final Color accentColor;
   final Animation<double> expandAnimation;
   final Animation<double> labelAnimation;
   final VoidCallback onTap;
 
   const _AnimatedNavItem({
     required this.index,
-    required this.icon,
+    required this.iconName,
     required this.label,
     required this.isDark,
+    required this.accentColor,
     required this.expandAnimation,
     required this.labelAnimation,
     required this.onTap,
@@ -183,8 +191,6 @@ class _AnimatedNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use subtle accent - only for selected state, keep it minimal
-    final foregroundColor = isDark ? AppColors.foregroundDark : AppColors.foreground;
     final mutedColor = isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground;
 
     return GestureDetector(
@@ -203,8 +209,7 @@ class _AnimatedNavItem extends StatelessWidget {
             height: 40,
             width: totalWidth,
             decoration: BoxDecoration(
-              color: (isDark ? AppColors.secondaryDark : AppColors.secondary)
-                  .withValues(alpha: progress * 0.8),
+              color: accentColor.withValues(alpha: progress * 0.15),
               borderRadius: BorderRadius.circular(100),
             ),
             child: Stack(
@@ -219,18 +224,26 @@ class _AnimatedNavItem extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Color.lerp(
                         Colors.transparent,
-                        foregroundColor,
+                        isDark ? Colors.white : Colors.black,
                         progress,
                       ),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      icon,
-                      size: progress > 0.5 ? 18 : 22,
-                      color: Color.lerp(
-                        mutedColor,
-                        isDark ? AppColors.backgroundDark : AppColors.background,
-                        progress,
+                    child: Center(
+                      child: DuotoneIcon(
+                        iconName,
+                        size: progress > 0.5 ? 18 : 22,
+                        strokeColor: Color.lerp(
+                          isDark ? mutedColor : Colors.black,
+                          isDark ? Colors.black : Colors.white,
+                          progress,
+                        ),
+                        fillColor: Color.lerp(
+                          isDark ? mutedColor : Colors.black,
+                          isDark ? Colors.black : Colors.white,
+                          progress,
+                        ),
+                        accentColor: accentColor,
                       ),
                     ),
                   ),
@@ -258,7 +271,7 @@ class _AnimatedNavItem extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: foregroundColor,
+                                color: isDark ? AppColors.foregroundDark : AppColors.foreground,
                               ),
                               overflow: TextOverflow.clip,
                             ),

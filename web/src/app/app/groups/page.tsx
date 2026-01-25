@@ -12,7 +12,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, Link2, Copy, Loader2, CheckCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { DuotoneIcon, DuotoneIconNames } from "@/components/ui/duotone-icon";
 import { useAuth } from "@/lib/hooks/use-auth";
 import * as dataService from "@/lib/supabase/data-service";
 
@@ -99,77 +100,128 @@ export default function GroupsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-lg px-4 py-6">
+    <div className="container mx-auto px-4 py-6 max-w-lg lg:max-w-4xl">
       <header className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Grupos</h1>
+        <h1 className="text-2xl font-bold">MIS TAREAS</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setJoinDialogOpen(true)}>
-            <Link2 className="size-4 mr-1" />
+            <DuotoneIcon name={DuotoneIconNames.link} size={16} className="mr-1" />
             Unirse
           </Button>
-          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="size-4 mr-1" />
-            Crear
+          <Button
+            size="sm"
+            onClick={() => setCreateDialogOpen(true)}
+            className="bg-black dark:bg-white hover:bg-black/90 dark:hover:bg-white/90"
+          >
+            <DuotoneIcon name={DuotoneIconNames.plus} size={16} strokeColor="var(--primary)" className="mr-1" />
+            <span className="text-white dark:text-black">Crear</span>
           </Button>
         </div>
       </header>
 
-      {households.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Users className="size-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No tienes grupos</h3>
-            <p className="text-muted-foreground mb-4">
-              Crea un grupo para compartir tareas con familia o amigos
-            </p>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="size-4 mr-2" />
-              Crear grupo
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {households.map((household) => (
-            <Card key={household.id} className="cursor-pointer hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <Avatar className="size-12 bg-primary/10">
-                    <AvatarFallback className="text-primary font-semibold">
-                      {household.name.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{household.name}</CardTitle>
-                    {household.description && (
-                      <p className="text-sm text-muted-foreground">{household.description}</p>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Codigo de invitacion</p>
-                    <p className="font-mono font-semibold">{household.invite_code}</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => copyInviteCode(household.invite_code)}
-                  >
-                    {copiedCode === household.invite_code ? (
-                      <CheckCircle className="size-4 text-green-500" />
-                    ) : (
-                      <Copy className="size-4" />
-                    )}
-                  </Button>
-                </div>
+      {/* Folder Tabs */}
+      <Tabs defaultValue="personal" className="mb-6">
+        <TabsList className="grid w-full grid-cols-3 p-1 h-auto bg-transparent gap-2">
+          <TabsTrigger
+            value="personal"
+            className="data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black rounded-t-xl rounded-b-none border border-b-0 data-[state=inactive]:bg-muted/50 py-2.5"
+          >
+            <DuotoneIcon name={DuotoneIconNames.user} size={16} className="mr-2" />
+            Personales
+          </TabsTrigger>
+          <TabsTrigger
+            value="groups"
+            className="data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black rounded-t-xl rounded-b-none border border-b-0 data-[state=inactive]:bg-muted/50 py-2.5"
+          >
+            <DuotoneIcon name={DuotoneIconNames.users} size={16} className="mr-2" />
+            Grupos
+          </TabsTrigger>
+          <TabsTrigger
+            value="categories"
+            className="data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black rounded-t-xl rounded-b-none border border-b-0 data-[state=inactive]:bg-muted/50 py-2.5"
+          >
+            <DuotoneIcon name={DuotoneIconNames.layers} size={16} className="mr-2" />
+            Categorias
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="personal" className="mt-0 pt-4 border-t-0">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <DuotoneIcon name={DuotoneIconNames.clipboardCheck} size={48} className="mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Tus tareas personales apareceran aqui</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="groups" className="mt-0 pt-4 border-t-0">
+          {households.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <DuotoneIcon name={DuotoneIconNames.users} size={48} className="mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No tienes grupos</h3>
+                <p className="text-muted-foreground mb-4">
+                  Crea un grupo para compartir tareas con familia o amigos
+                </p>
+                <Button onClick={() => setCreateDialogOpen(true)} className="bg-black dark:bg-white text-white dark:text-black hover:bg-black/90 dark:hover:bg-white/90">
+                  <DuotoneIcon name={DuotoneIconNames.plus} size={16} strokeColor="var(--primary)" className="mr-2" />
+                  Crear grupo
+                </Button>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="space-y-4">
+              {households.map((household) => (
+                <Card key={household.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="size-12 bg-primary/10">
+                        <AvatarFallback className="text-primary font-semibold">
+                          {household.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{household.name}</CardTitle>
+                        {household.description && (
+                          <p className="text-sm text-muted-foreground">{household.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Codigo de invitacion</p>
+                        <p className="font-mono font-semibold">{household.invite_code}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => copyInviteCode(household.invite_code)}
+                      >
+                        {copiedCode === household.invite_code ? (
+                          <DuotoneIcon name={DuotoneIconNames.check} size={16} strokeColor="#22c55e" />
+                        ) : (
+                          <DuotoneIcon name={DuotoneIconNames.link} size={16} className="text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="categories" className="mt-0 pt-4 border-t-0">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <DuotoneIcon name={DuotoneIconNames.layers} size={48} className="mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Tus categorias apareceran aqui</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Create Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

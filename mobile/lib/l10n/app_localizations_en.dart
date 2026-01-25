@@ -124,6 +124,9 @@ class SEn extends S {
   String get noReminder => 'No reminder';
 
   @override
+  String get tapToSetTime => 'Tap to set time';
+
+  @override
   String get saveTask => 'Save task';
 
   @override

@@ -124,6 +124,9 @@ class SEs extends S {
   String get noReminder => 'Sin recordatorio';
 
   @override
+  String get tapToSetTime => 'Toca para configurar hora';
+
+  @override
   String get saveTask => 'Guardar tarea';
 
   @override
@@ -238,7 +241,7 @@ class SEs extends S {
   String get language => 'Idioma';
 
   @override
-  String get spanish => 'Espanol';
+  String get spanish => 'Español';
 
   @override
   String get english => 'English';

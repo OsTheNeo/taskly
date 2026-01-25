@@ -319,6 +319,12 @@ abstract class S {
   /// **'Sin recordatorio'**
   String get noReminder;
 
+  /// No description provided for @tapToSetTime.
+  ///
+  /// In es, this message translates to:
+  /// **'Toca para configurar hora'**
+  String get tapToSetTime;
+
   /// No description provided for @saveTask.
   ///
   /// In es, this message translates to:
@@ -544,7 +550,7 @@ abstract class S {
   /// No description provided for @spanish.
   ///
   /// In es, this message translates to:
-  /// **'Espanol'**
+  /// **'Español'**
   String get spanish;
 
   /// No description provided for @english.
