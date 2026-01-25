@@ -2480,7 +2480,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             label: 'Cambiar nombre',
             onTap: () {
               Navigator.pop(context);
-              // TODO: Show rename dialog
+              _showRenameDialog(isDark);
             },
           ),
           _buildSettingsItem(
@@ -2509,7 +2509,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
             isDestructive: true,
             onTap: () {
               Navigator.pop(context);
-              // TODO: Show delete confirmation
+              _showDeleteConfirmation(isDark);
             },
           ),
           const SizedBox(height: 16),
@@ -2730,9 +2730,9 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                     label: 'Hacer admin',
                     size: AppButtonSize.sm,
                     variant: AppButtonVariant.outline,
-                    onPressed: () {
-                      // TODO: Implement promote to admin
+                    onPressed: () async {
                       Navigator.pop(context);
+                      await _promoteToAdmin(member['id'] as String);
                     },
                   ),
                 )),
@@ -2740,6 +2740,133 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
         ],
       ),
     );
+  }
+
+  void _showRenameDialog(bool isDark) {
+    final controller = TextEditingController(text: widget.group['name'] as String?);
+    bool isValid = controller.text.trim().isNotEmpty;
+
+    AppBottomSheet.show(
+      context: context,
+      title: 'Cambiar nombre del grupo',
+      child: StatefulBuilder(
+        builder: (context, setModalState) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppInput(
+                controller: controller,
+                placeholder: 'Nombre del grupo',
+                onChanged: (value) {
+                  setModalState(() {
+                    isValid = value.trim().isNotEmpty;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              AppButton(
+                label: 'Guardar',
+                fullWidth: true,
+                disabled: !isValid,
+                onPressed: isValid
+                    ? () async {
+                        Navigator.pop(context);
+                        final newName = controller.text.trim();
+
+                        // Actualizar en Supabase
+                        await _dataService.updateHousehold(
+                          householdId: widget.group['id'] as String,
+                          name: newName,
+                        );
+
+                        // Notificar al padre para recargar
+                        widget.onGroupUpdated();
+                      }
+                    : null,
+              ),
+              const SizedBox(height: 8),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(bool isDark) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? AppColors.cardDark : AppColors.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Eliminar grupo',
+          style: TextStyle(
+            color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+          ),
+        ),
+        content: Text(
+          'Esta accion eliminara el grupo "${widget.group['name']}" y todas sus tareas. Esta accion no se puede deshacer.',
+          style: TextStyle(
+            color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(
+                color: isDark ? AppColors.foregroundDark : AppColors.foreground,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              // Eliminar en Supabase
+              final success = await _dataService.deleteHousehold(
+                widget.group['id'] as String,
+              );
+
+              if (success && mounted) {
+                // Cerrar la vista de detalle y volver a grupos
+                Navigator.pop(context);
+                widget.onGroupUpdated();
+              }
+            },
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: AppColors.destructive),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _promoteToAdmin(String userId) async {
+    final success = await _dataService.updateMemberRole(
+      householdId: widget.group['id'] as String,
+      userId: userId,
+      newRole: 'owner',
+    );
+
+    if (success) {
+      // Recargar datos del grupo (incluye miembros)
+      await _loadGroupData();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Miembro promovido a administrador'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   void _showAddTaskSheet(bool isDark, S l10n) {

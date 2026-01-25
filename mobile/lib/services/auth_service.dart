@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'injection.dart';
 import 'data_service.dart';
+import 'notification_service.dart';
 
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -23,6 +24,9 @@ class AuthService {
         avatarUrl: user.photoURL,
       );
       debugPrint('[AuthService] Perfil sincronizado a Supabase');
+
+      // Actualizar el UID del usuario en NotificationService para FCM token
+      NotificationService().setCurrentUserUid(user.uid);
     } catch (e) {
       debugPrint('[AuthService] Error sincronizando perfil: $e');
     }
@@ -107,6 +111,9 @@ class AuthService {
   }
 
   Future<void> signOut() async {
+    // Limpiar el UID del usuario en NotificationService
+    NotificationService().setCurrentUserUid(null);
+
     await Future.wait([
       _firebaseAuth.signOut(),
       _googleSignIn.signOut(),

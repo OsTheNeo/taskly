@@ -14,6 +14,7 @@ class AppButton extends StatelessWidget {
   final String? iconName;
   final bool isLoading;
   final bool fullWidth;
+  final bool disabled;
 
   const AppButton({
     super.key,
@@ -24,6 +25,7 @@ class AppButton extends StatelessWidget {
     this.iconName,
     this.isLoading = false,
     this.fullWidth = false,
+    this.disabled = false,
   });
 
   @override
@@ -34,7 +36,7 @@ class AppButton extends StatelessWidget {
       width: fullWidth ? double.infinity : null,
       height: _getHeight(),
       child: TextButton(
-        onPressed: isLoading ? null : onPressed,
+        onPressed: (isLoading || disabled) ? null : onPressed,
         style: TextButton.styleFrom(
           backgroundColor: _getBackgroundColor(isDark),
           foregroundColor: _getForegroundColor(isDark),

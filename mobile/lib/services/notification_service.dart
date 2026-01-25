@@ -4,12 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+import 'data_service.dart';
 
 /// Background message handler - must be top-level function
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('[NotificationService] Background message: ${message.messageId}');
 }
+
+/// Tipo de callback para manejar navegación a tarea desde notificación
+typedef OnNotificationTapCallback = void Function(String taskId);
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -19,11 +23,28 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final DataService _dataService = DataService();
 
   bool _initialized = false;
   String? _fcmToken;
+  String? _currentUserUid;
+  OnNotificationTapCallback? _onNotificationTap;
 
   String? get fcmToken => _fcmToken;
+
+  /// Establece el callback para manejar taps en notificaciones
+  void setOnNotificationTap(OnNotificationTapCallback callback) {
+    _onNotificationTap = callback;
+  }
+
+  /// Establece el UID del usuario actual para actualizar el token FCM
+  void setCurrentUserUid(String? uid) {
+    _currentUserUid = uid;
+    // Si ya tenemos el token y ahora tenemos el uid, actualizar en Supabase
+    if (uid != null && _fcmToken != null) {
+      _updateTokenInSupabase(_fcmToken!);
+    }
+  }
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -74,8 +95,13 @@ class NotificationService {
     _firebaseMessaging.onTokenRefresh.listen((newToken) {
       _fcmToken = newToken;
       debugPrint('[NotificationService] FCM Token refreshed: $newToken');
-      // TODO: Update token in Supabase profile
+      _updateTokenInSupabase(newToken);
     });
+
+    // Guardar el token inicial en Supabase si tenemos usuario
+    if (_fcmToken != null) {
+      _updateTokenInSupabase(_fcmToken!);
+    }
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
@@ -107,12 +133,27 @@ class NotificationService {
 
   void _handleMessageOpenedApp(RemoteMessage message) {
     debugPrint('[NotificationService] Message opened app: ${message.data}');
-    // TODO: Navigate to specific task if taskId is present
+    final taskId = message.data['taskId'] as String?;
+    if (taskId != null && _onNotificationTap != null) {
+      _onNotificationTap!(taskId);
+    }
   }
 
   void _onNotificationTapped(NotificationResponse response) {
     debugPrint('[NotificationService] Notification tapped: ${response.payload}');
-    // TODO: Navigate to specific task if taskId is present
+    final taskId = response.payload;
+    if (taskId != null && taskId.isNotEmpty && _onNotificationTap != null) {
+      _onNotificationTap!(taskId);
+    }
+  }
+
+  /// Actualiza el token FCM en Supabase
+  Future<void> _updateTokenInSupabase(String token) async {
+    if (_currentUserUid == null) return;
+    await _dataService.updateProfileFcmToken(
+      firebaseUid: _currentUserUid!,
+      fcmToken: token,
+    );
   }
 
   Future<bool> requestPermissions() async {

@@ -84,6 +84,25 @@ class DataService {
     }
   }
 
+  /// Actualiza el token FCM del usuario para notificaciones push
+  Future<void> updateProfileFcmToken({
+    required String firebaseUid,
+    required String fcmToken,
+  }) async {
+    try {
+      await _client
+          .from(SupabaseConfig.profilesTable)
+          .update({
+            'fcm_token': fcmToken,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('firebase_uid', firebaseUid);
+      debugPrint('[DataService] FCM token updated for user: $firebaseUid');
+    } catch (e) {
+      debugPrint('[DataService] Error updating FCM token: $e');
+    }
+  }
+
   // ============================================================================
   // TASKS
   // ============================================================================
@@ -609,6 +628,56 @@ class DataService {
     } catch (e) {
       debugPrint('[DataService] Error getting household members: $e');
       return [];
+    }
+  }
+
+  /// Elimina un hogar/grupo y todos sus datos asociados
+  Future<bool> deleteHousehold(String householdId) async {
+    try {
+      // Eliminar miembros primero (por integridad referencial)
+      await _client
+          .from(SupabaseConfig.householdMembersTable)
+          .delete()
+          .eq('household_id', householdId);
+
+      // Eliminar tareas del grupo
+      await _client
+          .from(SupabaseConfig.tasksTable)
+          .delete()
+          .eq('household_id', householdId);
+
+      // Eliminar el hogar
+      await _client
+          .from(SupabaseConfig.householdsTable)
+          .delete()
+          .eq('id', householdId);
+
+      debugPrint('[DataService] Deleted household: $householdId');
+      return true;
+    } catch (e) {
+      debugPrint('[DataService] Error deleting household: $e');
+      return false;
+    }
+  }
+
+  /// Actualiza el rol de un miembro del hogar
+  Future<bool> updateMemberRole({
+    required String householdId,
+    required String userId,
+    required String newRole,
+  }) async {
+    try {
+      await _client
+          .from(SupabaseConfig.householdMembersTable)
+          .update({'role': newRole})
+          .eq('household_id', householdId)
+          .eq('user_id', userId);
+
+      debugPrint('[DataService] Updated role for user $userId to $newRole');
+      return true;
+    } catch (e) {
+      debugPrint('[DataService] Error updating member role: $e');
+      return false;
     }
   }
 
