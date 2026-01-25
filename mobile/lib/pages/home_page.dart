@@ -28,6 +28,9 @@ class _HomePageState extends State<HomePage> {
   bool _isLoading = true;
   String? _error;
 
+  // Date selection
+  DateTime _selectedDate = DateTime.now();
+
   // Filters
   String? _selectedCategoryFilter;
   bool _showCompletedOnly = false;
@@ -189,41 +192,49 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
-                  // Date badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.cardDark : AppColors.card,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? AppColors.borderDark : AppColors.border,
+                  // Date picker button
+                  GestureDetector(
+                    onTap: () => _showDatePicker(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.cardDark : AppColors.card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? AppColors.borderDark : AppColors.border,
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          '${DateTime.now().day}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.primary,
+                      child: Column(
+                        children: [
+                          Text(
+                            '${_selectedDate.day}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: settings.accentColor,
+                            ),
                           ),
-                        ),
-                        Text(
-                          _getMonthName(DateTime.now().month),
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                          Text(
+                            _getMonthName(_selectedDate.month),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            // Day selector strip
+            _buildDayStrip(isDark),
+
+            const SizedBox(height: 16),
 
             // Content
             Expanded(
@@ -1374,6 +1385,101 @@ class _HomePageState extends State<HomePage> {
       'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
     ];
     return months[month - 1];
+  }
+
+  String _getDayName(int weekday) {
+    const days = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'];
+    return days[weekday - 1];
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  Widget _buildDayStrip(bool isDark) {
+    final today = DateTime.now();
+    // Generar 7 días: 3 antes, hoy, 3 después
+    final days = List.generate(7, (i) => today.add(Duration(days: i - 3)));
+
+    return SizedBox(
+      height: 70,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: days.length,
+        itemBuilder: (context, index) {
+          final date = days[index];
+          final isSelected = _isSameDay(date, _selectedDate);
+          final isToday = _isSameDay(date, today);
+
+          return GestureDetector(
+            onTap: () {
+              setState(() => _selectedDate = date);
+              _loadTasksForDate(date);
+            },
+            child: Container(
+              width: 48,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? settings.accentColor
+                    : (isDark ? AppColors.cardDark : AppColors.card),
+                borderRadius: BorderRadius.circular(14),
+                border: isToday && !isSelected
+                    ? Border.all(color: settings.accentColor, width: 2)
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _getDayName(date.weekday),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? AppColors.mutedForegroundDark : AppColors.mutedForeground),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? AppColors.foregroundDark : AppColors.foreground),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showDatePicker(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+      _loadTasksForDate(picked);
+    }
+  }
+
+  Future<void> _loadTasksForDate(DateTime date) async {
+    // Por ahora recarga las tareas normales
+    // TODO: Filtrar por fecha cuando el backend lo soporte
+    await _loadTasks();
   }
 }
 

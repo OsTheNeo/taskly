@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 abstract class Routes {
   static const String home = '/';
   static const String auth = '/auth';
+  static const String group = '/group/:id';
 }
 
 /// Convierte el stream de auth en un Listenable para GoRouter
